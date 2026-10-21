@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>แผนที่แหล่งเรียนรู้ตำบลเวียง</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=K2D:wght@500;700&family=Sarabun:wght@400;600&display=swap">
+<style>
+/* Layout: one centered column; interactive image with numbered pins, info card floats near pin (bottom card on phones). Teal + Lanna gold. */
+:root{
+  --bg:#e6f2f7; --surface:#ffffff; --fg:#1e2f2a; --muted:#5b6f69; --line:#cfe1e6;
+  --accent:#0e7c86; --accent2:#1fa98b; --gold:#f2b134; --pin-fg:#ffffff; --shadow:rgba(10,60,70,.35);
+  --display:"K2D",system-ui,sans-serif; --body:"Sarabun",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1a20; --surface:#17252c; --fg:#e6efec; --muted:#9fb3ad; --line:#2a3d45;
+  --accent:#3fb6bf; --accent2:#36c49f; --gold:#f2b134; --pin-fg:#0f1a20; --shadow:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a20; --surface:#17252c; --fg:#e6efec; --muted:#9fb3ad; --line:#2a3d45;
+  --accent:#3fb6bf; --accent2:#36c49f; --gold:#f2b134; --pin-fg:#0f1a20; --shadow:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+header h1{font-family:var(--display);font-weight:700;font-size:clamp(1.5rem,4.5vw,2.2rem);line-height:1.25;margin:0;text-align:center;text-wrap:balance;color:var(--accent)}
+header p{margin:4px 0 0;text-align:center;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center}
+button,.btn{font:inherit;cursor:pointer;border-radius:999px;padding:6px 14px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.on{background:var(--accent);border-color:var(--accent);color:var(--pin-fg)}
+.stage{position:relative;width:100%;max-width:100%;border-radius:16px;overflow:visible;user-select:none;-webkit-user-select:none}
+.stage img{display:block;width:100%;height:auto;border-radius:16px;-webkit-user-drag:none}
+.pin{position:absolute;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;border:3px solid #fff;background:var(--accent);color:#fff;font-family:var(--display);font-weight:700;font-size:1rem;display:grid;place-items:center;padding:0;box-shadow:0 4px 12px var(--shadow);cursor:pointer;z-index:2;touch-action:none}
+.pin::before{content:"";position:absolute;inset:-8px;border-radius:50%;border:3px solid var(--gold);opacity:0;animation:pulse 2.2s ease-out infinite}
+.pin.active{background:var(--gold);color:#3b2600;z-index:4}
+@keyframes pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+@media (prefers-reduced-motion:reduce){.pin::before{animation:none}}
+.editing .pin{cursor:grab;background:#d9534f}
+.editing .stage img{cursor:crosshair}
+.card{position:absolute;z-index:5;width:min(320px,80vw);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 12px 30px -8px var(--shadow);display:flex;flex-direction:column;gap:6px}
+.card h2{font-family:var(--display);font-weight:700;font-size:1.15rem;margin:0;color:var(--accent);padding-right:28px}
+.card p{margin:0;font-size:.98rem}
+.card .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.card .x{position:absolute;top:8px;right:8px;width:28px;height:28px;padding:0;border-radius:50%;line-height:1}
+.card a{color:var(--accent);font-weight:600}
+@media (max-width:640px){
+  .card{position:static;width:100%;margin-top:12px}
+  .pin{width:30px;height:30px;font-size:.9rem;border-width:2px}
+}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.list button{border-radius:10px;text-align:left;display:flex;gap:8px;align-items:center}
+.list .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--pin-fg);display:grid;place-items:center;font-family:var(--display);font-size:.85rem}
+.editor{background:var(--surface);border:2px dashed #d9534f;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.editor h3{margin:0;font-family:var(--display);font-size:1.1rem}
+.editor label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.92rem}
+.editor input,.editor textarea{font:inherit;font-weight:400;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.editor textarea{min-height:90px;resize:vertical}
+.editor .hint{color:var(--muted);font-size:.9rem;margin:0}
+.editor pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:.8rem;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;margin:0}
+.toast{color:var(--accent2);font-weight:600}
+.note{color:var(--muted);font-size:.88rem;text-align:center;margin:0}
+.credit{text-align:center;color:var(--muted);font-size:.95rem;line-height:1.7;padding-top:10px;border-top:1px solid var(--line)}
+.credit strong{font-family:var(--display);font-weight:500;color:var(--fg);font-size:1.05rem}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <h1 id="mapTitle">แผนที่แหล่งเรียนรู้ ตำบลเวียง อำเภอเทิง</h1>
+    <p>ชี้เมาส์หรือแตะที่หมุดตัวเลข เพื่ออ่านและฟังข้อมูลแต่ละสถานที่</p>
+  </header>
+
+  <div class="bar">
+    <button type="button" id="voiceBtn" class="on" aria-pressed="true">🔊 เสียงอ่าน: เปิด</button>
+    <button type="button" id="stopBtn">⏹ หยุดเสียง</button>
+    <button type="button" id="tourBtn">▶ เล่นทุกจุดตามลำดับ</button>
+    <button type="button" id="editBtn" aria-pressed="false">✏️ โหมดแก้ไข</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <img id="mapImg" src="map.jpg" alt="ภาพแผนที่แหล่งเรียนรู้แบบเกาะลอย 3 มิติ" draggable="false">
+  </div>
+  <div id="cardSlot"></div>
+
+  <div class="list" id="list" aria-label="รายชื่อสถานที่"></div>
+
+  <section class="editor" id="editor" hidden>
+    <h3>โหมดแก้ไข</h3>
+    <p class="hint">แตะที่ว่างบนภาพเพื่อเพิ่มหมุดใหม่ · ลากหมุดสีแดงเพื่อย้ายตำแหน่ง · แตะหมุดเพื่อแก้ข้อความ</p>
+    <div id="editFields" hidden style="display:flex;flex-direction:column;gap:10px">
+      <label for="fTitle">ชื่อสถานที่<input id="fTitle"></label>
+      <label for="fText">คำอธิบาย (ข้อความนี้จะถูกอ่านออกเสียง)<textarea id="fText"></textarea></label>
+      <label for="fLink">ลิงก์ Google Maps หรือเว็บไซต์ (ถ้ามี)<input id="fLink" placeholder="https://"></label>
+      <div class="bar" style="justify-content:flex-start">
+        <button type="button" id="fDel">🗑 ลบหมุดนี้</button>
+        <button type="button" id="fTest">🔊 ทดลองฟัง</button>
+      </div>
+    </div>
+    <label for="fMapTitle">ชื่อแผนที่ (หัวเรื่องด้านบน)<input id="fMapTitle"></label>
+    <div class="bar" style="justify-content:flex-start">
+      <button type="button" id="dlBtn">💾 ดาวน์โหลด index.html ที่แก้แล้ว</button>
+      <button type="button" id="copyBtn">📋 คัดลอกข้อมูลหมุด</button>
+      <span class="toast" id="toast" hidden></span>
+    </div>
+    <p class="hint">ปุ่มดาวน์โหลดใช้ได้เมื่อเปิดหน้านี้จาก GitHub หรือจากไฟล์ในเครื่อง นำไฟล์ที่ได้ไปอัปโหลดทับ index.html เดิม ถ้าดาวน์โหลดไม่ได้ ให้กดคัดลอกข้อมูลหมุด แล้วนำไปวางแทนข้อมูลเดิมในไฟล์ index.html ระหว่างบรรทัด DATA_START และ DATA_END</p>
+    <pre id="dataOut"></pre>
+  </section>
+
+  <p class="note" id="voiceNote"></p>
+
+  <footer class="credit">
+    สร้างสรรค์โดย <strong>นายวนศาสตร์ วัฒนาสกุลลี</strong><br>
+    ครู สกร.ระดับอำเภอเทิง
+  </footer>
+</div>
+
+<script>
+/*DATA_START*/
+const MAP_DATA = {
+  "title": "แผนที่แหล่งเรียนรู้ ตำบลเวียง อำเภอเทิง",
+  "places": [
+    {"x":35.5,"y":12.5,"title":"จุดชมวิว","text":"จุดชมวิวบนยอดเขา มองเห็นทะเลหมอกและทิวทัศน์ของตำบลเวียงได้กว้างไกล เหมาะสำหรับถ่ายภาพในช่วงเช้า","link":""},
+    {"x":67.5,"y":32.5,"title":"ตลาดผลิตภัณฑ์ชุมชน","text":"ตลาดจำหน่ายสินค้าและผลิตภัณฑ์ของชุมชน เช่น เครื่องปั้นดินเผา อาหารพื้นบ้าน และของฝาก","link":""},
+    {"x":44,"y":41.5,"title":"โรงเรียน","text":"โรงเรียนในชุมชน เป็นแหล่งเรียนรู้ของเด็กและเยาวชนในตำบล","link":""},
+    {"x":72.5,"y":51,"title":"ศาลาบ่อน้ำโบราณ","text":"ศาลาไม้แบบล้านนาและบ่อน้ำเก่าแก่ของชุมชน แหล่งเรียนรู้ประวัติศาสตร์และวิถีชีวิตดั้งเดิม","link":""},
+    {"x":33,"y":62.5,"title":"ศูนย์การเรียนรู้ชุมชน","text":"ศูนย์การเรียนรู้ของ สกร.ระดับอำเภอเทิง จัดกิจกรรมการเรียนรู้ตลอดชีวิตให้กับนักเรียนและประชาชน","link":""},
+    {"x":59,"y":80,"title":"ศูนย์เรียนรู้เศรษฐกิจพอเพียง","text":"แหล่งเรียนรู้ตามหลักปรัชญาของเศรษฐกิจพอเพียง มีบ่อเลี้ยงปลา แปลงผักปลอดสารพิษ และใช้พลังงานแสงอาทิตย์","link":""}
+  ]
+};
+/*DATA_END*/
+
+const $=id=>document.getElementById(id);
+const data=JSON.parse(JSON.stringify(MAP_DATA));
+let active=-1, editing=false, voiceOn=true, touched=false, tourTimer=null;
+const narrow=()=>matchMedia("(max-width:640px)").matches;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- speech ---------- */
+const synth=window.speechSynthesis;
+let thVoice=null;
+function pickVoice(){
+  if(!synth) return;
+  const vs=synth.getVoices();
+  thVoice=vs.find(v=>/^th/i.test(v.lang))||null;
+  $("voiceNote").textContent = !synth ? "เบราว์เซอร์นี้ไม่รองรับเสียงอ่าน"
+    : (vs.length && !thVoice) ? "เครื่องนี้ยังไม่มีเสียงภาษาไทย ถ้าไม่ได้ยินเสียง ให้เพิ่มเสียงภาษาไทยในการตั้งค่าเครื่อง หรือเปิดด้วย Chrome / Edge" : "";
+}
+if(synth){ pickVoice(); synth.onvoiceschanged=pickVoice; }
+function speak(p){
+  if(!synth||!voiceOn||!p) return;
+  try{
+    synth.cancel();
+    const u=new SpeechSynthesisUtterance(p.title+". "+p.text);
+    u.lang="th-TH"; if(thVoice) u.voice=thVoice; u.rate=0.95;
+    synth.speak(u);
+  }catch(e){}
+}
+function stopSpeak(){ try{synth&&synth.cancel()}catch(e){} }
+
+/* ---------- render ---------- */
+function renderPins(){
+  const st=$("stage");
+  st.querySelectorAll(".pin").forEach(n=>n.remove());
+  data.places.forEach((p,i)=>{
+    const b=document.createElement("button");
+    b.type="button"; b.className="pin"+(i===active?" active":"");
+    b.style.left=p.x+"%"; b.style.top=p.y+"%";
+    b.textContent=i+1; b.dataset.i=i;
+    b.setAttribute("aria-label",(i+1)+". "+p.title);
+    st.appendChild(b);
+  });
+  $("list").innerHTML=data.places.map((p,i)=>`<button type="button" data-i="${i}"><span class="n">${i+1}</span>${esc(p.title)}</button>`).join("");
+  $("mapTitle").textContent=data.title;
+  document.title=data.title;
+  if(editing) $("dataOut").textContent=dataText();
+}
+function showCard(i,doSpeak){
+  active=i;
+  document.querySelectorAll(".pin").forEach(n=>n.classList.toggle("active",+n.dataset.i===i));
+  const old=document.querySelector(".card"); if(old) old.remove();
+  if(i<0) return;
+  const p=data.places[i];
+  const c=document.createElement("div");
+  c.className="card"; c.setAttribute("role","dialog"); c.setAttribute("aria-label",p.title);
+  c.innerHTML=`<button type="button" class="x" aria-label="ปิด">✕</button>
+    <h2>${i+1}. ${esc(p.title)}</h2><p>${esc(p.text)}</p>
+    <div class="row"><button type="button" class="say">🔊 ฟังอีกครั้ง</button>${p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">📍 ดูแผนที่ / ข้อมูลเพิ่ม</a>`:""}</div>`;
+  c.querySelector(".x").onclick=()=>{stopSpeak();showCard(-1)};
+  c.querySelector(".say").onclick=()=>speak(p);
+  if(narrow()){ $("cardSlot").appendChild(c); c.scrollIntoView({block:"nearest",behavior:"smooth"}); }
+  else{
+    $("stage").appendChild(c);
+    const W=$("stage").clientWidth, H=$("stage").clientHeight, cw=c.offsetWidth, ch=c.offsetHeight;
+    let x=p.x/100*W+26, y=p.y/100*H-ch/2;
+    if(x+cw>W) x=p.x/100*W-cw-26;
+    y=Math.max(4,Math.min(H-ch-4,y));
+    c.style.left=x+"px"; c.style.top=y+"px";
+  }
+  if(editing) fillEditor();
+  if(doSpeak) speak(p);
+}
+
+/* ---------- viewer events ---------- */
+const stage=$("stage");
+stage.addEventListener("mouseover",e=>{
+  const pin=e.target.closest(".pin"); if(!pin||editing||narrow()) return;
+  const i=+pin.dataset.i; if(i!==active) showCard(i,touched);
+});
+stage.addEventListener("click",e=>{
+  touched=true;
+  const pin=e.target.closest(".pin");
+  if(editing){
+    if(pin){ showCard(+pin.dataset.i,false); return; }
+    if(e.target.id==="mapImg" && !dragMoved){
+      const r=e.target.getBoundingClientRect();
+      data.places.push({x:+((e.clientX-r.left)/r.width*100).toFixed(1),y:+((e.clientY-r.top)/r.height*100).toFixed(1),title:"สถานที่ใหม่",text:"พิมพ์คำอธิบายที่นี่",link:""});
+      renderPins(); showCard(data.places.length-1,false); $("fTitle").focus(); $("fTitle").select();
+    }
+    return;
+  }
+  if(pin){ stopTour(); showCard(+pin.dataset.i,true); }
+});
+$("list").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  touched=true; stopTour(); showCard(+b.dataset.i,!editing);
+  if(!narrow()) stage.scrollIntoView({block:"nearest",behavior:"smooth"});
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){stopSpeak();showCard(-1);} });
+document.addEventListener("click",e=>{
+  if(!narrow()&&!editing&&!e.target.closest(".pin,.card,.list,.bar")) showCard(-1);
+});
+
+$("voiceBtn").onclick=()=>{
+  voiceOn=!voiceOn; touched=true;
+  $("voiceBtn").classList.toggle("on",voiceOn);
+  $("voiceBtn").setAttribute("aria-pressed",voiceOn);
+  $("voiceBtn").textContent="🔊 เสียงอ่าน: "+(voiceOn?"เปิด":"ปิด");
+  if(!voiceOn) stopSpeak();
+};
+$("stopBtn").onclick=()=>{stopTour();stopSpeak();};
+
+/* ---------- guided tour ---------- */
+function stopTour(){ if(tourTimer){clearTimeout(tourTimer);tourTimer=null;} $("tourBtn").textContent="▶ เล่นทุกจุดตามลำดับ"; }
+$("tourBtn").onclick=()=>{
+  touched=true;
+  if(tourTimer){ stopTour(); stopSpeak(); return; }
+  let i=0; $("tourBtn").textContent="⏸ หยุดเล่น";
+  const next=()=>{
+    if(i>=data.places.length){ stopTour(); return; }
+    showCard(i,true);
+    const p=data.places[i++];
+    const wait=voiceOn&&synth ? 1200 : 0;
+    const poll=()=>{ tourTimer=setTimeout(()=>{ if(voiceOn&&synth&&synth.speaking) poll(); else tourTimer=setTimeout(next,700); },400); };
+    tourTimer=setTimeout(voiceOn&&synth?poll:()=>{tourTimer=setTimeout(next,Math.max(3500,p.text.length*90))},wait);
+  };
+  next();
+};
+
+/* ---------- edit mode ---------- */
+let drag=null, dragMoved=false;
+$("editBtn").onclick=()=>{
+  editing=!editing; stopTour(); stopSpeak();
+  $("app").classList.toggle("editing",editing);
+  $("editor").hidden=!editing;
+  $("editBtn").classList.toggle("on",editing);
+  $("editBtn").setAttribute("aria-pressed",editing);
+  $("fMapTitle").value=data.title;
+  showCard(-1); renderPins(); fillEditor();
+  if(editing) $("editor").scrollIntoView({block:"nearest",behavior:"smooth"});
+};
+stage.addEventListener("pointerdown",e=>{
+  const pin=e.target.closest(".pin"); if(!editing||!pin) return;
+  drag={i:+pin.dataset.i,el:pin,sx:e.clientX,sy:e.clientY}; dragMoved=false;
+  pin.setPointerCapture(e.pointerId); e.preventDefault();
+});
+stage.addEventListener("pointermove",e=>{
+  if(!drag) return;
+  if(Math.abs(e.clientX-drag.sx)+Math.abs(e.clientY-drag.sy)>4) dragMoved=true;
+  if(!dragMoved) return;
+  const r=$("mapImg").getBoundingClientRect();
+  const x=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)), y=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));
+  const p=data.places[drag.i]; p.x=+x.toFixed(1); p.y=+y.toFixed(1);
+  drag.el.style.left=p.x+"%"; drag.el.style.top=p.y+"%";
+  const c=document.querySelector(".card"); if(c&&!narrow()) c.remove();
+});
+stage.addEventListener("pointerup",()=>{
+  if(!drag) return;
+  const i=drag.i, moved=dragMoved; drag=null;
+  if(moved){ renderPins(); showCard(i,false); setTimeout(()=>dragMoved=false,0); }
+});
+function fillEditor(){
+  const has=editing&&active>=0;
+  $("editFields").hidden=!has;
+  $("editFields").style.display=has?"flex":"none";
+  if(has){ const p=data.places[active]; $("fTitle").value=p.title; $("fText").value=p.text; $("fLink").value=p.link||""; }
+  $("dataOut").textContent=dataText();
+}
+["fTitle","fText","fLink"].forEach(id=>$(id).addEventListener("input",()=>{
+  if(active<0) return;
+  const p=data.places[active], k={fTitle:"title",fText:"text",fLink:"link"}[id];
+  p[k]=$(id).value;
+  const c=document.querySelector(".card");
+  if(c){ c.querySelector("h2").textContent=(active+1)+". "+p.title; c.querySelector("p").textContent=p.text; }
+  $("list").querySelectorAll("button")[active].lastChild.textContent=p.title;
+  $("dataOut").textContent=dataText();
+}));
+$("fMapTitle").addEventListener("input",()=>{ data.title=$("fMapTitle").value; $("mapTitle").textContent=data.title; $("dataOut").textContent=dataText(); });
+$("fDel").onclick=()=>{ if(active<0) return; data.places.splice(active,1); showCard(-1); renderPins(); fillEditor(); };
+$("fTest").onclick=()=>{ if(active>=0){ const was=voiceOn; voiceOn=true; speak(data.places[active]); voiceOn=was; } };
+
+function dataText(){
+  return "const MAP_DATA = "+JSON.stringify(data,null,2)
+    .replace(/\{\n\s+"x"/g,'{"x"').replace(/,\n\s+"(y|title|text|link)"/g,',"$1"').replace(/"\n\s+\}/g,'"}')+";";
+}
+function flash(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; setTimeout(()=>t.hidden=true,2500); }
+$("copyBtn").onclick=()=>{
+  const t=dataText();
+  const sel=()=>{const r=document.createRange();r.selectNodeContents($("dataOut"));const s=getSelection();s.removeAllRanges();s.addRange(r);flash("เลือกข้อความแล้ว กด Ctrl+C หรือคัดลอกเอง");};
+  try{ navigator.clipboard.writeText(t).then(()=>flash("คัดลอกแล้ว"),sel); }catch(e){ sel(); }
+};
+$("dlBtn").onclick=async()=>{
+  try{
+    const res=await fetch(location.href.split("#")[0],{cache:"no-store"});
+    const src=await res.text();
+    const a=src.indexOf("/*DATA_START*/"), b=src.indexOf("/*DATA_END*/");
+    if(a<0||b<0) throw 0;
+    const out=src.slice(0,a)+"/*DATA_START*/\n"+dataText()+"\n"+src.slice(b);
+    const url=URL.createObjectURL(new Blob([out],{type:"text/html"}));
+    const link=document.createElement("a"); link.href=url; link.download="index.html";
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+    flash("ดาวน์โหลดแล้ว");
+  }catch(e){ flash("ดาวน์โหลดจากหน้านี้ไม่ได้ ใช้ปุ่มคัดลอกข้อมูลหมุดแทน"); }
+};
+window.addEventListener("resize",()=>{ if(active>=0) showCard(active,false); });
+
+renderPins();
+</script>
+</body>
+</html>
