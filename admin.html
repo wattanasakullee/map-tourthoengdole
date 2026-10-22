@@ -64,6 +64,7 @@
         </form>
       </div>
 
+      <div class="msg" id="noAssign" hidden>คุณยังไม่ได้รับมอบหมายให้ดูแลตำบลใด กรุณาติดต่อแอดมินหลักเพื่อกำหนดตำบลให้</div>
       <div class="panel" id="editPanel">
         <div class="grid2">
           <label for="fName">ชื่อตำบล (แสดงบนปุ่มเลือก)<input id="fName"></label>
@@ -107,13 +108,13 @@
     <section id="secTeach" hidden style="display:flex;flex-direction:column;gap:16px">
       <div class="panel">
         <h2>นำเข้ารายชื่อครูจากไฟล์ Excel</h2>
-        <p class="hint">ไฟล์ต้องมีหัวตารางคอลัมน์ "ชื่อ" "สกุล" และ "เบอร์โทร" (เหมือนไฟล์ข้อมูลบุคลากร) ชื่อที่มีอยู่แล้วจะถูกข้ามไป</p>
+        <p class="hint">ไฟล์ต้องมีหัวตารางคอลัมน์ "ชื่อ" "สกุล" และ "เบอร์โทร" (เหมือนไฟล์ข้อมูลบุคลากร) ถ้ามีคอลัมน์ "ตำบล" ระบบจะกำหนดตำบลที่ดูแลให้ด้วย (หลายตำบลคั่นด้วยเครื่องหมายจุลภาค) ชื่อที่มีอยู่แล้วจะถูกข้ามไป</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <label class="btn" for="xFile" style="flex-direction:row;font-weight:400;cursor:pointer">📄 เลือกไฟล์ Excel<input type="file" id="xFile" accept=".xlsx,.xls,.csv" style="position:absolute;opacity:0;width:1px;height:1px"></label>
           <button type="button" class="primary" id="xGo" hidden>นำเข้า</button>
           <span class="hint" id="xMsg"></span>
         </div>
-        <div class="tablewrap" id="xPrev" hidden><table><thead><tr><th>ชื่อ</th><th>นามสกุล</th><th>เบอร์โทร</th><th>สถานะ</th></tr></thead><tbody id="xBody"></tbody></table></div>
+        <div class="tablewrap" id="xPrev" hidden><table><thead><tr><th>ชื่อ</th><th>นามสกุล</th><th>เบอร์โทร</th><th>ตำบล</th><th>สถานะ</th></tr></thead><tbody id="xBody"></tbody></table></div>
       </div>
       <form class="panel" id="addT">
         <h2>เพิ่มครู</h2>
@@ -122,12 +123,13 @@
           <label for="tLast">นามสกุล<input id="tLast"></label>
           <label for="tPhone">เบอร์โทร (ใช้เป็นรหัสผ่าน)<input id="tPhone" inputmode="numeric" required></label>
         </div>
+        <fieldset class="mapchecks" id="tMaps"><legend>ตำบลที่ดูแล (แก้ไขได้เฉพาะตำบลที่เลือก)</legend></fieldset>
         <div><button type="submit" class="primary">+ เพิ่มครู</button></div>
       </form>
       <div class="panel">
         <h2>รายชื่อครู <small class="hint" id="tCount"></small></h2>
         <div class="tablewrap"><table>
-          <thead><tr><th>ชื่อ</th><th>นามสกุล</th><th>เบอร์โทร</th><th>สิทธิ์</th><th></th></tr></thead>
+          <thead><tr><th>ชื่อ</th><th>นามสกุล</th><th>เบอร์โทร</th><th>สิทธิ์</th><th>ตำบลที่ดูแล</th><th></th></tr></thead>
           <tbody id="tBody"></tbody>
         </table></div>
         <p class="hint">แอดมินหลักเพิ่ม ลบ และเปลี่ยนสิทธิ์ครูได้ ครูทั่วไปแก้ไขแผนที่ได้อย่างเดียว</p>
@@ -153,6 +155,15 @@ let user = null, maps = [], editId = null, draft = null, base = null, dirty = fa
 const stage = $("stage");
 const copy = o => JSON.parse(JSON.stringify(o));
 const byName = () => user.name;
+const isMain = () => !!user && user.role === "main";
+const allowedMaps = () => isMain() ? maps : maps.filter(m => (user.maps || []).includes(m.id));
+const mapName = id => (maps.find(m => m.id === id) || {}).name;
+function applyRole() {
+  $("uRole").textContent = isMain() ? "แอดมินหลัก" : "ครู";
+  $("tabTeach").hidden = !isMain();
+  $("newBtn").hidden = !isMain(); $("delMapBtn").hidden = !isMain();
+  if (!isMain() && !$("secTeach").hidden) showTab("map");
+}
 const views = ["loginForm", "setupForm", "app", "boot"];
 function view(id) { views.forEach(v => $(v).hidden = v !== id); }
 
@@ -181,14 +192,14 @@ async function showLogin(msg) {
 function showApp(u) {
   user = u; view("app");
   $("uName").textContent = "ครู" + user.name;
-  $("uRole").textContent = user.role === "main" ? "แอดมินหลัก" : "ครู";
-  $("tabTeach").hidden = user.role !== "main";
-  // ถ้าบัญชีถูกลบหรือเปลี่ยนสิทธิ์ ให้มีผลทันที
+  applyRole();
+  // ถ้าบัญชีถูกลบ เปลี่ยนสิทธิ์ หรือเปลี่ยนตำบลที่ดูแล ให้มีผลทันที
   if (unMe) unMe();
   unMe = F.watchProfile(user.uid, p => {
     if (!p) { dirty = false; F.logout(); showLogin("บัญชีนี้ถูกลบแล้ว"); return; }
-    user = p; $("uRole").textContent = p.role === "main" ? "แอดมินหลัก" : "ครู"; $("tabTeach").hidden = p.role !== "main";
-    if (p.role !== "main" && !$("secTeach").hidden) showTab("map");
+    const before = JSON.stringify([user.role, user.maps || []]);
+    user = p; applyRole();
+    if (before !== JSON.stringify([p.role, p.maps || []])) refreshMapList();
   });
   if (!unMaps) unMaps = F.watchMaps(onMaps);
 }
@@ -221,15 +232,23 @@ function confirmTwice(btn, ask) {
 function onMaps(list, err) {
   if (!list) { toast("โหลดข้อมูลไม่สำเร็จ: " + err); return; }
   maps = list;
-  if (!maps.find(m => m.id === editId)) { editId = maps[0] ? maps[0].id : null; dirty = false; }
-  $("mapSel").innerHTML = maps.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("") || `<option value="">ยังไม่มีตำบล</option>`;
+  refreshMapList();
+  if (!$("secTeach").hidden) { renderTeachers(); renderMapChecks($("tMaps"), [...$("tMaps").querySelectorAll("input:checked")].map(c => c.value)); }
+}
+/* แสดงเฉพาะตำบลที่ครูคนนี้มีสิทธิ์แก้ไข */
+function refreshMapList() {
+  if (!user) return;
+  const list = allowedMaps();
+  if (!list.find(m => m.id === editId)) { editId = list[0] ? list[0].id : null; dirty = false; }
+  $("mapSel").innerHTML = list.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("") || `<option value="">${isMain() ? "ยังไม่มีตำบล" : "ยังไม่ได้รับมอบหมายตำบล"}</option>`;
   if (editId) $("mapSel").value = editId;
-  const m = maps.find(x => x.id === editId);
+  $("noAssign").hidden = isMain() || list.length > 0;
+  const m = list.find(x => x.id === editId);
   if (!dirty) startEdit();
   else if (m && base && m.updatedAt !== base.updatedAt) $("status").textContent = "ครู" + (m.updatedBy || "ท่านอื่น") + " เพิ่งบันทึกตำบลนี้ ควรบันทึกหรือยกเลิกการแก้ไขของคุณ";
 }
 function startEdit() {
-  const m = maps.find(x => x.id === editId);
+  const m = allowedMaps().find(x => x.id === editId);
   const keepSel = draft && m && draft.id === m.id ? sel : -1;
   base = m ? copy(m) : null; draft = m ? copy(m) : null; sel = draft && keepSel < draft.places.length ? keepSel : -1;
   setDirty(false); renderEditor();
@@ -372,11 +391,15 @@ $("delMapBtn").onclick = async () => {
 };
 
 /* ---------- จัดการครู ---------- */
-let teachers = [];
+let teachers = [], assigning = null;
+function renderMapChecks(box, checked) {
+  const legend = box.querySelector("legend").outerHTML;
+  box.innerHTML = legend + (maps.length ? maps.map(m => `<label class="chk"><input type="checkbox" value="${esc(m.id)}" ${checked.includes(m.id) ? "checked" : ""}> ${esc(m.name)}</label>`).join("") : '<span class="hint">ยังไม่มีตำบล</span>');
+}
 function showTab(t) {
   $("secMap").hidden = t !== "map"; $("secTeach").hidden = t !== "teach";
   $("tabMap").classList.toggle("on", t === "map"); $("tabTeach").classList.toggle("on", t === "teach");
-  if (t === "teach") loadTeachers();
+  if (t === "teach") { loadTeachers(); renderMapChecks($("tMaps"), []); }
 }
 $("tabMap").onclick = () => showTab("map");
 $("tabTeach").onclick = () => showTab("teach");
@@ -385,9 +408,14 @@ function renderTeachers() {
   $("tBody").innerHTML = teachers.map((t, i) => `<tr>
     <td>${esc(t.name)}</td><td>${esc(t.last)}</td><td class="num">${esc(t.phone)}</td>
     <td>${t.role === "main" ? '<span class="badge">แอดมินหลัก</span>' : "ครู"}</td>
+    <td class="wrapcell">${t.role === "main" ? '<span class="hint">ทุกตำบล</span>' : `${(t.maps || []).map(mapName).filter(Boolean).map(esc).join(", ") || '<span class="hint">ยังไม่กำหนด</span>'}
+      <button type="button" data-assign="${i}">กำหนดตำบล</button>`}</td>
     <td>${t.uid === user.uid ? '<span class="hint">บัญชีของคุณ</span>' : `
       <button type="button" data-role="${i}">${t.role === "main" ? "ปรับเป็นครู" : "ตั้งเป็นแอดมินหลัก"}</button>
-      <button type="button" class="danger" data-del="${i}">ลบ</button>`}</td></tr>`).join("");
+      <button type="button" class="danger" data-del="${i}">ลบ</button>`}</td></tr>
+    ${assigning === t.uid ? `<tr class="assignrow"><td colspan="6"><fieldset class="mapchecks" id="aMaps"><legend>ตำบลที่ครู${esc(t.name)}แก้ไขได้</legend></fieldset>
+      <div class="bar" style="justify-content:flex-start;margin-top:8px"><button type="button" class="primary" data-savemaps="${i}">บันทึกตำบล</button><button type="button" data-cancelassign="1">ยกเลิก</button></div></td></tr>` : ""}`).join("");
+  const box = $("aMaps"); if (box) { const t = teachers.find(x => x.uid === assigning); renderMapChecks(box, (t && t.maps) || []); }
 }
 async function loadTeachers() {
   $("tBody").innerHTML = `<tr><td colspan="5" class="hint">กำลังโหลด…</td></tr>`;
@@ -396,7 +424,13 @@ async function loadTeachers() {
 $("tBody").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
   try {
-    if (b.dataset.del) { if (!confirmTwice(b, "ยืนยันลบ?")) return; await F.deleteTeacher(teachers[+b.dataset.del]); toast("ลบแล้ว"); }
+    if (b.dataset.assign) { assigning = teachers[+b.dataset.assign].uid; renderTeachers(); return; }
+    if (b.dataset.cancelassign) { assigning = null; renderTeachers(); return; }
+    if (b.dataset.savemaps) {
+      const ids = [...$("aMaps").querySelectorAll("input:checked")].map(c => c.value);
+      await F.setTeacherMaps(teachers[+b.dataset.savemaps], ids); assigning = null; toast("บันทึกตำบลที่ดูแลแล้ว");
+    }
+    else if (b.dataset.del) { if (!confirmTwice(b, "ยืนยันลบ?")) return; await F.deleteTeacher(teachers[+b.dataset.del]); toast("ลบแล้ว"); }
     else if (b.dataset.role) { const t = teachers[+b.dataset.role]; await F.setRole(t, t.role === "main" ? "teacher" : "main"); toast("เปลี่ยนสิทธิ์แล้ว"); }
     loadTeachers();
   } catch (err) { toast(err.message); }
@@ -404,7 +438,11 @@ $("tBody").addEventListener("click", async e => {
 $("addT").addEventListener("submit", async e => {
   e.preventDefault();
   const btn = $("addT").querySelector("button[type=submit]"); btn.disabled = true;
-  try { await F.addTeacher({ name: $("tName").value, last: $("tLast").value, phone: $("tPhone").value }); toast("เพิ่มครูแล้ว"); $("addT").reset(); loadTeachers(); }
+  try {
+    const ids = [...$("tMaps").querySelectorAll("input:checked")].map(c => c.value);
+    await F.addTeacher({ name: $("tName").value, last: $("tLast").value, phone: $("tPhone").value, maps: ids });
+    toast("เพิ่มครูแล้ว"); $("addT").reset(); renderMapChecks($("tMaps"), []); loadTeachers();
+  }
   catch (err) { toast(err.message); }
   btn.disabled = false;
 });
@@ -432,11 +470,17 @@ $("xFile").addEventListener("change", async e => {
     const h = rows.findIndex(r => r.some(c => /^ชื่อ$/.test(String(c).trim())) && r.some(c => /เบอร์|โทร/.test(c)));
     if (h < 0) throw new Error("ไม่พบหัวตาราง ชื่อ / สกุล / เบอร์โทร ในไฟล์");
     const H = rows[h].map(c => String(c).trim());
-    const ci = H.findIndex(c => c === "ชื่อ"), li = H.findIndex(c => /สกุล/.test(c)), pi = H.findIndex(c => /เบอร์|โทร/.test(c));
+    const ci = H.findIndex(c => c === "ชื่อ"), li = H.findIndex(c => /สกุล/.test(c)), pi = H.findIndex(c => /เบอร์|โทร/.test(c)), ti = H.findIndex(c => /ตำบล/.test(c));
+    const key = s => String(s || "").replace(/^ต\.|^ตำบล/, "").replace(/\s+/g, "");
     const have = new Set(teachers.map(t => t.name));
     importRows = rows.slice(h + 1).filter(r => String(r[ci]).trim()).map(r => {
       const name = F.normName(r[ci]), phone = F.phonePass(r[pi]);
-      return { name, last: String(r[li] || "").trim(), phone, status: have.has(name) ? "มีอยู่แล้ว" : phone.length < 9 ? "เบอร์ไม่ถูกต้อง" : "รอนำเข้า" };
+      const want = ti < 0 ? [] : String(r[ti] || "").split(/[,،、/]+/).map(key).filter(Boolean);
+      const found = want.map(w => maps.find(m => key(m.name) === w)).filter(Boolean);
+      const miss = want.filter(w => !maps.find(m => key(m.name) === w));
+      return { name, last: String(r[li] || "").trim(), phone, maps: found.map(m => m.id),
+        tambon: found.map(m => m.name).join(", ") + (miss.length ? " (ไม่พบ: " + miss.join(", ") + ")" : ""),
+        status: have.has(name) ? "มีอยู่แล้ว" : phone.length < 9 ? "เบอร์ไม่ถูกต้อง" : "รอนำเข้า" };
     });
     renderImport();
   } catch (err) { $("xMsg").textContent = err.message; $("xPrev").hidden = true; $("xGo").hidden = true; }
@@ -446,7 +490,7 @@ function renderImport() {
   $("xPrev").hidden = !importRows.length; $("xGo").hidden = !n;
   $("xGo").textContent = "นำเข้า " + n + " คน";
   $("xMsg").textContent = "พบ " + importRows.length + " รายชื่อ";
-  $("xBody").innerHTML = importRows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.last)}</td><td class="num">${esc(r.phone)}</td><td>${esc(r.status)}</td></tr>`).join("");
+  $("xBody").innerHTML = importRows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.last)}</td><td class="num">${esc(r.phone)}</td><td>${esc(r.tambon || "-")}</td><td>${esc(r.status)}</td></tr>`).join("");
 }
 $("xGo").onclick = async () => {
   $("xGo").disabled = true;

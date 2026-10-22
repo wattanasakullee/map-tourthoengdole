@@ -116,4 +116,10 @@ td.num{font-variant-numeric:tabular-nums}
 .pw .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);padding:6px 8px;border-radius:8px}
 .pw .eye:hover{color:var(--accent)}
 .hint.err{color:var(--danger)}
+.mapchecks{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px;margin:0}
+.mapchecks legend{font-weight:600;font-size:.92rem;padding:0 4px}
+.chk{flex-direction:row;align-items:center;gap:6px;font-weight:400}
+.chk input{width:auto}
+td.wrapcell{white-space:normal;min-width:160px}
+.assignrow td{background:var(--bg)}
 .hint{color:var(--muted);font-size:.9rem;margin:0}

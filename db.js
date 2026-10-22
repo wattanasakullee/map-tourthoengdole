@@ -188,7 +188,7 @@ export async function addTeacher(t) {
   catch (e) { throw fail(thaiAuthError(e)); }
   finally { deleteApp(sec).catch(() => {}); }
   const b = writeBatch(db);
-  b.set(doc(db, "teachers", uid), { name: key, last: String(t.last || "").trim(), phone: pass, role: t.role === "main" ? "main" : "teacher" });
+  b.set(doc(db, "teachers", uid), { name: key, last: String(t.last || "").trim(), phone: pass, role: t.role === "main" ? "main" : "teacher", maps: Array.isArray(t.maps) ? t.maps.slice(0, 50) : [] });
   b.set(doc(db, "logins", key), { email, uid });
   await b.commit();
 }
@@ -197,4 +197,5 @@ export async function deleteTeacher(t) {
   b.delete(doc(db, "teachers", t.uid)); b.delete(doc(db, "logins", t.name));
   await b.commit();
 }
+export async function setTeacherMaps(t, ids) { await updateDoc(doc(db, "teachers", t.uid), { maps: ids.slice(0, 50) }); }
 export async function setRole(t, role) { await updateDoc(doc(db, "teachers", t.uid), { role: role === "main" ? "main" : "teacher" }); }
