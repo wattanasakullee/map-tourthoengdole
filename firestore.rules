@@ -1,0 +1,40 @@
+rules_version = '2';
+// กฎความปลอดภัย: วางทั้งหมดใน Firebase Console > Firestore Database > Rules แล้วกด Publish
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function teacherDoc() { return /databases/$(database)/documents/teachers/$(request.auth.uid); }
+    function isTeacher() { return signedIn() && exists(teacherDoc()); }
+    function isMain() { return isTeacher() && get(teacherDoc()).data.role == 'main'; }
+    function firstSetup() { return !exists(/databases/$(database)/documents/meta/setup); }
+
+    // แผนที่และภาพ: ทุกคนดูได้ เฉพาะครูที่อยู่ในรายชื่อแก้ไขได้
+    match /maps/{id} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+    match /mapImages/{id} {
+      allow read: if true;
+      allow write: if isTeacher() && (request.resource == null || request.resource.data.data.size() < 1000000);
+    }
+
+    // ชื่อสำหรับเข้าสู่ระบบ (ไม่มีเบอร์โทร)
+    match /logins/{name} {
+      allow read: if true;
+      allow write: if isMain() || (firstSetup() && signedIn());
+    }
+
+    // ข้อมูลครู: เจ้าของบัญชีและแอดมินหลักเท่านั้นที่อ่านได้
+    match /teachers/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isMain());
+      allow write: if isMain()
+        || (firstSetup() && signedIn() && request.auth.uid == uid && request.resource.data.role == 'main');
+    }
+
+    match /meta/{docId} {
+      allow read: if true;
+      allow create: if firstSetup() && signedIn();
+      allow update, delete: if isMain();
+    }
+  }
+}

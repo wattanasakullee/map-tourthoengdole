@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>แอดมินแผนที่แหล่งเรียนรู้</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=K2D:wght@500;700&family=Sarabun:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="page-title">แอดมินแผนที่แหล่งเรียนรู้</h1>
+    <p class="sub">สำหรับครู สกร.ระดับอำเภอเทิง แก้ไขแล้วกดบันทึก ผู้ชมจะเห็นการเปลี่ยนแปลงภายในไม่กี่วินาที</p>
+  </header>
+
+  <!-- เข้าสู่ระบบ -->
+  <form class="panel login" id="loginForm" hidden>
+    <h2>เข้าสู่ระบบ</h2>
+    <label for="lName">ชื่อ (ใส่เฉพาะชื่อ ไม่ต้องใส่นามสกุล)<input id="lName" autocomplete="username" placeholder="เช่น วนศาสตร์" required></label>
+    <label for="lPhone">รหัสผ่าน (เบอร์โทรศัพท์)<input id="lPhone" type="password" inputmode="numeric" autocomplete="current-password" placeholder="เช่น 08xxxxxxxx" required></label>
+    <button type="submit" class="primary" id="lBtn" style="justify-content:center">เข้าสู่ระบบ</button>
+    <p class="hint" id="lMsg" role="alert"></p>
+  </form>
+
+  <!-- ตั้งค่าครั้งแรก -->
+  <form class="panel login" id="setupForm" hidden>
+    <h2>ตั้งค่าระบบครั้งแรก</h2>
+    <p class="hint">ยังไม่มีแอดมินในระบบ กรอกข้อมูลของแอดมินหลักคนแรก (ทำครั้งเดียว) จากนั้นนำเข้ารายชื่อครูจากไฟล์ Excel ได้ในแท็บจัดการครู</p>
+    <label for="sName">ชื่อ<input id="sName" required placeholder="เช่น วนศาสตร์"></label>
+    <label for="sLast">นามสกุล<input id="sLast" placeholder="เช่น วัฒนาสกุลลี"></label>
+    <label for="sPhone">เบอร์โทร (ใช้เป็นรหัสผ่าน)<input id="sPhone" inputmode="numeric" required></label>
+    <button type="submit" class="primary" id="sBtn" style="justify-content:center">สร้างแอดมินหลัก</button>
+    <p class="hint" id="sMsg" role="alert"></p>
+  </form>
+
+  <!-- หลังเข้าสู่ระบบ -->
+  <div id="app" hidden style="display:flex;flex-direction:column;gap:16px">
+    <div class="panel userbar">
+      <div>สวัสดี <strong id="uName"></strong> <span class="badge" id="uRole"></span></div>
+      <div class="bar">
+        <a class="btn" href="index.html" target="_blank" rel="noopener">👁 เปิดหน้าผู้ชม</a>
+        <button type="button" id="tabMap" class="on">🗺 แก้ไขแผนที่</button>
+        <button type="button" id="tabTeach" hidden>👥 จัดการครู</button>
+        <button type="button" id="logout">ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <!-- แก้ไขแผนที่ -->
+    <section id="secMap" style="display:flex;flex-direction:column;gap:16px">
+      <div class="panel">
+        <div class="grid2">
+          <label for="mapSel">เลือกตำบลที่จะแก้ไข<select id="mapSel"></select></label>
+          <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+            <button type="button" id="newBtn">+ เพิ่มตำบลใหม่</button>
+            <button type="button" id="delMapBtn" class="danger">🗑 ลบตำบลนี้</button>
+          </div>
+        </div>
+        <form id="newForm" hidden style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+          <label for="newName" style="flex:1 1 220px">ชื่อตำบลใหม่<input id="newName" placeholder="เช่น ตำบลงิ้ว"></label>
+          <button type="submit" class="primary">สร้าง</button>
+          <button type="button" id="newCancel">ยกเลิก</button>
+        </form>
+      </div>
+
+      <div class="panel" id="editPanel">
+        <div class="grid2">
+          <label for="fName">ชื่อตำบล (แสดงบนปุ่มเลือก)<input id="fName"></label>
+          <label for="fTitle">ชื่อแผนที่ (หัวเรื่องด้านบน)<input id="fTitle"></label>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="btn" for="fImg" style="flex-direction:row;font-weight:400;cursor:pointer">🖼 เปลี่ยนภาพแผนที่<input type="file" id="fImg" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px"></label>
+          <span class="hint" id="imgMsg">แตะที่ว่างบนภาพเพื่อเพิ่มหมุด · ลากหมุดสีแดงเพื่อย้าย · แตะหมุดเพื่อแก้ข้อความ</span>
+        </div>
+        <div class="stage editmode" id="stage">
+          <img class="map" id="mapImg" alt="ภาพแผนที่ที่กำลังแก้ไข" draggable="false">
+        </div>
+        <div class="msg" id="noImg" hidden>ยังไม่มีภาพแผนที่ กด "เปลี่ยนภาพแผนที่" เพื่ออัปโหลด</div>
+
+        <div class="panel" id="pinForm" hidden style="border-style:dashed">
+          <h3 id="pinHead">หมุด</h3>
+          <label for="pTitle">ชื่อสถานที่<input id="pTitle"></label>
+          <label for="pText">คำอธิบาย <small>(ข้อความนี้จะถูกอ่านออกเสียง)</small><textarea id="pText"></textarea></label>
+          <label for="pLink">ลิงก์ Google Maps หรือเว็บไซต์ <small>(ถ้ามี)</small><input id="pLink" placeholder="https://"></label>
+          <div class="bar" style="justify-content:flex-start">
+            <button type="button" id="pTest">🔊 ทดลองฟัง</button>
+            <button type="button" id="pDel" class="danger">🗑 ลบหมุดนี้</button>
+          </div>
+        </div>
+
+        <h3>รายการหมุด <small class="hint" id="pinCount"></small></h3>
+        <div class="pinrows" id="pinRows"></div>
+        <p class="hint" id="lastBy"></p>
+      </div>
+
+      <div class="savebar">
+        <span class="status" id="status">ไม่มีการเปลี่ยนแปลง</span>
+        <div class="bar">
+          <button type="button" id="discard" disabled>ยกเลิกการแก้ไข</button>
+          <button type="button" id="save" class="primary" disabled>💾 บันทึก</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- จัดการครู -->
+    <section id="secTeach" hidden style="display:flex;flex-direction:column;gap:16px">
+      <div class="panel">
+        <h2>นำเข้ารายชื่อครูจากไฟล์ Excel</h2>
+        <p class="hint">ไฟล์ต้องมีหัวตารางคอลัมน์ "ชื่อ" "สกุล" และ "เบอร์โทร" (เหมือนไฟล์ข้อมูลบุคลากร) ชื่อที่มีอยู่แล้วจะถูกข้ามไป</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="btn" for="xFile" style="flex-direction:row;font-weight:400;cursor:pointer">📄 เลือกไฟล์ Excel<input type="file" id="xFile" accept=".xlsx,.xls,.csv" style="position:absolute;opacity:0;width:1px;height:1px"></label>
+          <button type="button" class="primary" id="xGo" hidden>นำเข้า</button>
+          <span class="hint" id="xMsg"></span>
+        </div>
+        <div class="tablewrap" id="xPrev" hidden><table><thead><tr><th>ชื่อ</th><th>นามสกุล</th><th>เบอร์โทร</th><th>สถานะ</th></tr></thead><tbody id="xBody"></tbody></table></div>
+      </div>
+      <form class="panel" id="addT">
+        <h2>เพิ่มครู</h2>
+        <div class="grid2">
+          <label for="tName">ชื่อ<input id="tName" required></label>
+          <label for="tLast">นามสกุล<input id="tLast"></label>
+          <label for="tPhone">เบอร์โทร (ใช้เป็นรหัสผ่าน)<input id="tPhone" inputmode="numeric" required></label>
+        </div>
+        <div><button type="submit" class="primary">+ เพิ่มครู</button></div>
+      </form>
+      <div class="panel">
+        <h2>รายชื่อครู <small class="hint" id="tCount"></small></h2>
+        <div class="tablewrap"><table>
+          <thead><tr><th>ชื่อ</th><th>นามสกุล</th><th>เบอร์โทร</th><th>สิทธิ์</th><th></th></tr></thead>
+          <tbody id="tBody"></tbody>
+        </table></div>
+        <p class="hint">แอดมินหลักเพิ่ม ลบ และเปลี่ยนสิทธิ์ครูได้ ครูทั่วไปแก้ไขแผนที่ได้อย่างเดียว</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="msg err" id="cfgMsg" hidden>ยังไม่ได้ตั้งค่าระบบ กรุณาใส่ค่า Firebase ในไฟล์ firebase-config.js</div>
+  <div class="msg" id="boot">กำลังเชื่อมต่อ…</div>
+
+  <footer class="credit">
+    สร้างสรรค์โดย <strong>นายวนศาสตร์ วัฒนาสกุลลี</strong><br>
+    ครู สกร.ระดับอำเภอเทิง
+  </footer>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="common.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+import * as F from "./db.js";
+
+let user = null, maps = [], editId = null, draft = null, base = null, dirty = false, sel = -1, unMe = null, unMaps = null, otherSaved = false;
+const stage = $("stage");
+const copy = o => JSON.parse(JSON.stringify(o));
+const byName = () => user.name;
+const views = ["loginForm", "setupForm", "app", "boot"];
+function view(id) { views.forEach(v => $(v).hidden = v !== id); }
+
+/* ---------- เข้าสู่ระบบ ---------- */
+async function showLogin(msg) {
+  user = null; if (unMe) { unMe(); unMe = null; } if (unMaps) { unMaps(); unMaps = null; }
+  try { if (!(await F.isSetupDone())) { view("setupForm"); return; } } catch (e) {}
+  view("loginForm"); $("lMsg").textContent = msg || "";
+}
+function showApp(u) {
+  user = u; view("app");
+  $("uName").textContent = "ครู" + user.name;
+  $("uRole").textContent = user.role === "main" ? "แอดมินหลัก" : "ครู";
+  $("tabTeach").hidden = user.role !== "main";
+  // ถ้าบัญชีถูกลบหรือเปลี่ยนสิทธิ์ ให้มีผลทันที
+  if (unMe) unMe();
+  unMe = F.watchProfile(user.uid, p => {
+    if (!p) { dirty = false; F.logout(); showLogin("บัญชีนี้ถูกลบแล้ว"); return; }
+    user = p; $("uRole").textContent = p.role === "main" ? "แอดมินหลัก" : "ครู"; $("tabTeach").hidden = p.role !== "main";
+    if (p.role !== "main" && !$("secTeach").hidden) showTab("map");
+  });
+  if (!unMaps) unMaps = F.watchMaps(onMaps);
+}
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("lBtn").disabled = true; $("lMsg").textContent = "กำลังตรวจสอบ…";
+  try { const u = await F.login($("lName").value, $("lPhone").value); $("lPhone").value = ""; showApp(u); }
+  catch (err) { $("lMsg").textContent = err.message; }
+  $("lBtn").disabled = false;
+});
+$("setupForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("sBtn").disabled = true; $("sMsg").textContent = "กำลังสร้าง…";
+  try {
+    const u = await F.firstSetup({ name: $("sName").value, last: $("sLast").value, phone: $("sPhone").value }, SEED);
+    showApp(u); showTab("teach"); toast("ตั้งค่าเรียบร้อย นำเข้ารายชื่อครูได้เลย");
+  } catch (err) { $("sMsg").textContent = err.message; }
+  $("sBtn").disabled = false;
+});
+$("logout").onclick = async () => { if (dirty && !confirmTwice($("logout"), "ออกโดยไม่บันทึก?")) return; dirty = false; await F.logout(); showLogin("ออกจากระบบแล้ว"); };
+
+function confirmTwice(btn, ask) {
+  if (btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = btn.dataset.label; return true; }
+  btn.dataset.label = btn.textContent; btn.dataset.armed = "1"; btn.textContent = ask;
+  setTimeout(() => { if (btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = btn.dataset.label; } }, 4000);
+  return false;
+}
+
+/* ---------- ข้อมูลแผนที่แบบเรียลไทม์ ---------- */
+function onMaps(list, err) {
+  if (!list) { toast("โหลดข้อมูลไม่สำเร็จ: " + err); return; }
+  maps = list;
+  if (!maps.find(m => m.id === editId)) { editId = maps[0] ? maps[0].id : null; dirty = false; }
+  $("mapSel").innerHTML = maps.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("") || `<option value="">ยังไม่มีตำบล</option>`;
+  if (editId) $("mapSel").value = editId;
+  const m = maps.find(x => x.id === editId);
+  if (!dirty) startEdit();
+  else if (m && base && m.updatedAt !== base.updatedAt) $("status").textContent = "ครู" + (m.updatedBy || "ท่านอื่น") + " เพิ่งบันทึกตำบลนี้ ควรบันทึกหรือยกเลิกการแก้ไขของคุณ";
+}
+function startEdit() {
+  const m = maps.find(x => x.id === editId);
+  const keepSel = draft && m && draft.id === m.id ? sel : -1;
+  base = m ? copy(m) : null; draft = m ? copy(m) : null; sel = draft && keepSel < draft.places.length ? keepSel : -1;
+  setDirty(false); renderEditor();
+}
+
+/* ---------- ตัวแก้ไข ---------- */
+function setDirty(v) {
+  dirty = v;
+  $("save").disabled = !v; $("discard").disabled = !v;
+  $("status").textContent = v ? "มีการแก้ไขที่ยังไม่บันทึก" : "ไม่มีการเปลี่ยนแปลง";
+  $("status").classList.toggle("dirty", v);
+}
+function renderEditor() {
+  const has = !!draft;
+  $("editPanel").hidden = !has; $("delMapBtn").disabled = !has;
+  if (!has) return;
+  if (document.activeElement !== $("fName")) $("fName").value = draft.name || "";
+  if (document.activeElement !== $("fTitle")) $("fTitle").value = draft.title || "";
+  const img = $("mapImg");
+  const key = draft.newImage ? "new:" + draft.newImage.length : draft.id + ":" + draft.image + ":" + (draft.imageRev || 0);
+  if (img.dataset.key !== key) {
+    img.dataset.key = key;
+    if (draft.newImage) setMapImage(img, draft.newImage);
+    else F.imageSrc(draft).then(src => { if (img.dataset.key === key) setMapImage(img, src); });
+  }
+  const hasImg = !!(draft.newImage || draft.image);
+  stage.hidden = !hasImg; $("noImg").hidden = hasImg;
+  $("lastBy").textContent = draft.updatedAt ? "บันทึกล่าสุด " + new Date(Number(draft.updatedAt)).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) + " โดย ครู" + (draft.updatedBy || "") : "";
+  renderPinsAll();
+}
+function renderPinsAll() {
+  renderPins(stage, draft.places, sel);
+  $("pinCount").textContent = "(" + draft.places.length + " จุด)";
+  $("pinRows").innerHTML = draft.places.map((p, i) => `
+    <div class="pinrow${i === sel ? " sel" : ""}">
+      <span class="n">${i + 1}</span><span class="t" data-sel="${i}">${esc(p.title || "(ไม่มีชื่อ)")}</span>
+      <button type="button" data-up="${i}" aria-label="เลื่อนขึ้น" ${i === 0 ? "disabled" : ""}>↑</button>
+      <button type="button" data-down="${i}" aria-label="เลื่อนลง" ${i === draft.places.length - 1 ? "disabled" : ""}>↓</button>
+    </div>`).join("") || `<p class="hint">ยังไม่มีหมุด แตะบนภาพเพื่อเพิ่ม</p>`;
+  const f = sel >= 0 && draft.places[sel];
+  $("pinForm").hidden = !f;
+  if (f) {
+    $("pinHead").textContent = "หมุดที่ " + (sel + 1);
+    if (document.activeElement !== $("pTitle")) $("pTitle").value = f.title;
+    if (document.activeElement !== $("pText")) $("pText").value = f.text;
+    if (document.activeElement !== $("pLink")) $("pLink").value = f.link || "";
+  }
+}
+function select(i) { sel = i; renderPinsAll(); }
+
+let drag = null, moved = false;
+stage.addEventListener("pointerdown", e => {
+  const pin = e.target.closest(".pin"); if (!pin) return;
+  drag = { i: +pin.dataset.i, el: pin, sx: e.clientX, sy: e.clientY }; moved = false;
+  pin.setPointerCapture(e.pointerId); e.preventDefault();
+});
+stage.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 4) moved = true;
+  if (!moved) return;
+  const r = $("mapImg").getBoundingClientRect(), p = draft.places[drag.i];
+  p.x = +Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)).toFixed(1);
+  p.y = +Math.max(0, Math.min(100, (e.clientY - r.top) / r.height * 100)).toFixed(1);
+  drag.el.style.left = p.x + "%"; drag.el.style.top = p.y + "%";
+});
+stage.addEventListener("pointerup", () => {
+  if (!drag) return;
+  const i = drag.i; drag = null;
+  if (moved) setDirty(true);
+  select(i); setTimeout(() => moved = false, 0);
+});
+stage.addEventListener("click", e => {
+  if (e.target.id !== "mapImg" || moved) return;
+  const r = e.target.getBoundingClientRect();
+  draft.places.push({ x: +((e.clientX - r.left) / r.width * 100).toFixed(1), y: +((e.clientY - r.top) / r.height * 100).toFixed(1), title: "สถานที่ใหม่", text: "", link: "" });
+  setDirty(true); select(draft.places.length - 1);
+  $("pTitle").focus(); $("pTitle").select();
+});
+$("pinRows").addEventListener("click", e => {
+  const d = e.target.dataset;
+  if (d.sel !== undefined) return select(+d.sel);
+  const i = d.up !== undefined ? +d.up : d.down !== undefined ? +d.down : -1; if (i < 0) return;
+  const j = d.up !== undefined ? i - 1 : i + 1;
+  [draft.places[i], draft.places[j]] = [draft.places[j], draft.places[i]];
+  setDirty(true); select(j);
+});
+[["pTitle", "title"], ["pText", "text"], ["pLink", "link"]].forEach(([id, k]) => $(id).addEventListener("input", () => {
+  if (sel < 0) return; draft.places[sel][k] = $(id).value; setDirty(true);
+  const t = $("pinRows").querySelector(`[data-sel="${sel}"]`); if (t && k === "title") t.textContent = $(id).value || "(ไม่มีชื่อ)";
+}));
+$("pDel").onclick = () => { if (sel < 0 || !confirmTwice($("pDel"), "กดอีกครั้งเพื่อยืนยันลบ")) return; draft.places.splice(sel, 1); setDirty(true); select(-1); };
+$("pTest").onclick = () => { if (sel >= 0) { const was = Voice.on; Voice.on = true; Voice.speak([draft.places[sel].title, draft.places[sel].text]); Voice.on = was; } };
+$("fName").addEventListener("input", () => { draft.name = $("fName").value; setDirty(true); });
+$("fTitle").addEventListener("input", () => { draft.title = $("fTitle").value; setDirty(true); });
+$("fImg").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f || !draft) return;
+  $("imgMsg").textContent = "กำลังเตรียมภาพ…";
+  try { draft.newImage = await F.compressImage(f); draft.newThumb = await F.makeThumb(draft.newImage); setDirty(true); renderEditor(); $("imgMsg").textContent = "เปลี่ยนภาพแล้ว กดบันทึกเพื่อให้ผู้ชมเห็น"; }
+  catch (err) { $("imgMsg").textContent = err.message; }
+});
+
+/* ---------- บันทึก ---------- */
+$("save").onclick = async () => {
+  if (!draft) return;
+  $("save").disabled = true; $("status").textContent = "กำลังบันทึก…";
+  try {
+    await F.saveMap(draft, base && base.updatedAt, byName());
+    delete draft.newImage; setDirty(false); toast("บันทึกแล้ว ผู้ชมเห็นการเปลี่ยนแปลงทันที");
+    startEdit();
+  } catch (e) {
+    $("status").textContent = e.message; $("status").classList.add("dirty"); $("save").disabled = false;
+    if (e.conflict) $("discard").textContent = "โหลดข้อมูลล่าสุด";
+  }
+};
+$("discard").onclick = () => { if (!confirmTwice($("discard"), "ยืนยันยกเลิกการแก้ไข?")) return; $("discard").textContent = "ยกเลิกการแก้ไข"; dirty = false; startEdit(); };
+$("mapSel").onchange = () => {
+  if (dirty) { $("mapSel").value = editId; toast("กรุณาบันทึกหรือยกเลิกการแก้ไขก่อนเปลี่ยนตำบล"); return; }
+  editId = $("mapSel").value; draft = null; startEdit();
+};
+window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+$("newBtn").onclick = () => { $("newForm").hidden = false; $("newName").focus(); };
+$("newCancel").onclick = () => { $("newForm").hidden = true; };
+$("newForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (dirty) { toast("กรุณาบันทึกหรือยกเลิกการแก้ไขก่อน"); return; }
+  const name = $("newName").value.trim(); if (!name) return;
+  try {
+    const order = maps.reduce((m, x) => Math.max(m, x.order || 0), 0) + 1;
+    const id = F.newMapId(); editId = id; draft = null;
+    await F.createMap(id, name, byName(), order);
+    if (maps.find(m => m.id === id)) { $("mapSel").value = id; startEdit(); }
+    $("newName").value = ""; $("newForm").hidden = true; toast("เพิ่ม " + name + " แล้ว อัปโหลดภาพแผนที่ได้เลย");
+  } catch (err) { toast(err.message); }
+});
+$("delMapBtn").onclick = async () => {
+  if (!draft || !confirmTwice($("delMapBtn"), "กดอีกครั้งเพื่อลบ " + draft.name)) return;
+  try { const id = draft.id; dirty = false; editId = null; draft = null; await F.deleteMap(id); toast("ลบตำบลแล้ว"); }
+  catch (err) { toast(err.message); }
+};
+
+/* ---------- จัดการครู ---------- */
+let teachers = [];
+function showTab(t) {
+  $("secMap").hidden = t !== "map"; $("secTeach").hidden = t !== "teach";
+  $("tabMap").classList.toggle("on", t === "map"); $("tabTeach").classList.toggle("on", t === "teach");
+  if (t === "teach") loadTeachers();
+}
+$("tabMap").onclick = () => showTab("map");
+$("tabTeach").onclick = () => showTab("teach");
+function renderTeachers() {
+  $("tCount").textContent = "(" + teachers.length + " คน)";
+  $("tBody").innerHTML = teachers.map((t, i) => `<tr>
+    <td>${esc(t.name)}</td><td>${esc(t.last)}</td><td class="num">${esc(t.phone)}</td>
+    <td>${t.role === "main" ? '<span class="badge">แอดมินหลัก</span>' : "ครู"}</td>
+    <td>${t.uid === user.uid ? '<span class="hint">บัญชีของคุณ</span>' : `
+      <button type="button" data-role="${i}">${t.role === "main" ? "ปรับเป็นครู" : "ตั้งเป็นแอดมินหลัก"}</button>
+      <button type="button" class="danger" data-del="${i}">ลบ</button>`}</td></tr>`).join("");
+}
+async function loadTeachers() {
+  $("tBody").innerHTML = `<tr><td colspan="5" class="hint">กำลังโหลด…</td></tr>`;
+  try { teachers = await F.listTeachers(); renderTeachers(); } catch (e) { $("tBody").innerHTML = `<tr><td colspan="5">${esc(e.message)}</td></tr>`; }
+}
+$("tBody").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  try {
+    if (b.dataset.del) { if (!confirmTwice(b, "ยืนยันลบ?")) return; await F.deleteTeacher(teachers[+b.dataset.del]); toast("ลบแล้ว"); }
+    else if (b.dataset.role) { const t = teachers[+b.dataset.role]; await F.setRole(t, t.role === "main" ? "teacher" : "main"); toast("เปลี่ยนสิทธิ์แล้ว"); }
+    loadTeachers();
+  } catch (err) { toast(err.message); }
+});
+$("addT").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("addT").querySelector("button[type=submit]"); btn.disabled = true;
+  try { await F.addTeacher({ name: $("tName").value, last: $("tLast").value, phone: $("tPhone").value }); toast("เพิ่มครูแล้ว"); $("addT").reset(); loadTeachers(); }
+  catch (err) { toast(err.message); }
+  btn.disabled = false;
+});
+
+/* นำเข้าจาก Excel */
+let importRows = [];
+$("xFile").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    if (typeof XLSX === "undefined") throw new Error("โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่");
+    const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+    const h = rows.findIndex(r => r.some(c => /^ชื่อ$/.test(String(c).trim())) && r.some(c => /เบอร์|โทร/.test(c)));
+    if (h < 0) throw new Error("ไม่พบหัวตาราง ชื่อ / สกุล / เบอร์โทร ในไฟล์");
+    const H = rows[h].map(c => String(c).trim());
+    const ci = H.findIndex(c => c === "ชื่อ"), li = H.findIndex(c => /สกุล/.test(c)), pi = H.findIndex(c => /เบอร์|โทร/.test(c));
+    const have = new Set(teachers.map(t => t.name));
+    importRows = rows.slice(h + 1).filter(r => String(r[ci]).trim()).map(r => {
+      const name = F.normName(r[ci]), phone = F.phonePass(r[pi]);
+      return { name, last: String(r[li] || "").trim(), phone, status: have.has(name) ? "มีอยู่แล้ว" : phone.length < 9 ? "เบอร์ไม่ถูกต้อง" : "รอนำเข้า" };
+    });
+    renderImport();
+  } catch (err) { $("xMsg").textContent = err.message; $("xPrev").hidden = true; $("xGo").hidden = true; }
+});
+function renderImport() {
+  const n = importRows.filter(r => r.status === "รอนำเข้า").length;
+  $("xPrev").hidden = !importRows.length; $("xGo").hidden = !n;
+  $("xGo").textContent = "นำเข้า " + n + " คน";
+  $("xMsg").textContent = "พบ " + importRows.length + " รายชื่อ";
+  $("xBody").innerHTML = importRows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.last)}</td><td class="num">${esc(r.phone)}</td><td>${esc(r.status)}</td></tr>`).join("");
+}
+$("xGo").onclick = async () => {
+  $("xGo").disabled = true;
+  const todo = importRows.filter(r => r.status === "รอนำเข้า");
+  let ok = 0;
+  for (const [k, r] of todo.entries()) {
+    $("xMsg").textContent = `กำลังนำเข้า ${k + 1}/${todo.length}…`;
+    try { await F.addTeacher(r); r.status = "นำเข้าแล้ว"; ok++; }
+    catch (err) { r.status = err.exists ? "มีอยู่แล้ว" : err.message; }
+    renderImport();
+  }
+  $("xMsg").textContent = "นำเข้าสำเร็จ " + ok + " คน"; $("xGo").disabled = false; $("xGo").hidden = true;
+  loadTeachers();
+};
+
+/* ตำบลตัวอย่างที่สร้างตอนตั้งค่าครั้งแรก */
+const SEED = { id: "taptao", data: { name: "ตำบลตับเต่า", title: "แผนที่แหล่งเรียนรู้ ตำบลตับเต่า อำเภอเทิง", image: "map.jpg", order: 1, places: [
+  { x: 35.5, y: 12.5, title: "จุดชมวิว", text: "จุดชมวิวบนยอดเขา มองเห็นทะเลหมอกและทิวทัศน์ของตำบลตับเต่าได้กว้างไกล เหมาะสำหรับถ่ายภาพในช่วงเช้า", link: "" },
+  { x: 67.5, y: 32.5, title: "ตลาดผลิตภัณฑ์ชุมชน", text: "ตลาดจำหน่ายสินค้าและผลิตภัณฑ์ของชุมชน เช่น เครื่องปั้นดินเผา อาหารพื้นบ้าน และของฝาก", link: "" },
+  { x: 44, y: 41.5, title: "โรงเรียน", text: "โรงเรียนในชุมชน เป็นแหล่งเรียนรู้ของเด็กและเยาวชนในตำบล", link: "" },
+  { x: 72.5, y: 51, title: "ศาลาบ่อน้ำโบราณ", text: "ศาลาไม้แบบล้านนาและบ่อน้ำเก่าแก่ของชุมชน แหล่งเรียนรู้ประวัติศาสตร์และวิถีชีวิตดั้งเดิม", link: "" },
+  { x: 33, y: 62.5, title: "ศูนย์การเรียนรู้ชุมชน", text: "ศูนย์การเรียนรู้ของ สกร.ระดับอำเภอเทิง จัดกิจกรรมการเรียนรู้ตลอดชีวิตให้กับนักเรียนและประชาชน", link: "" },
+  { x: 59, y: 80, title: "ศูนย์เรียนรู้เศรษฐกิจพอเพียง", text: "แหล่งเรียนรู้ตามหลักปรัชญาของเศรษฐกิจพอเพียง มีบ่อเลี้ยงปลา แปลงผักปลอดสารพิษ และใช้พลังงานแสงอาทิตย์", link: "" }
+] } };
+
+/* ---------- เริ่มต้น ---------- */
+if (!F.configured) { view(null); $("cfgMsg").hidden = false; }
+else {
+  // ตรวจเฉพาะครั้งแรกที่เปิดหน้า (กรณียังเข้าสู่ระบบค้างอยู่)
+  const stop = F.onUser(async u => {
+    stop();
+    if (u) { try { showApp(await F.profile()); } catch (e) { showLogin(e.message); } }
+    else showLogin();
+  });
+}
+</script>
+</body>
+</html>
