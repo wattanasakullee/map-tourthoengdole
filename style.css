@@ -61,7 +61,8 @@ label small{font-weight:400;color:var(--muted)}
 .tambonbox .tabs button{padding:6px 14px;font-size:.95rem}
 
 /* หน้าผู้ชม: ภาพแผนที่สูงไม่เกินจอ เพื่อให้เห็นภาพและข้อมูลใต้ภาพพร้อมกัน */
-.viewer .stage{width:fit-content;max-width:100%;margin-inline:auto}
+.viewer .stage{width:fit-content;max-width:100%;margin-inline:auto;scroll-margin-top:12px}
+.viewer #noImg{scroll-margin-top:12px}
 .viewer .stage img.map{width:auto;max-width:100%;max-height:68vh}
 .viewer #cardSlot:empty{display:none}
 

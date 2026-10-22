@@ -118,6 +118,7 @@ function selectMap(id, keepCard) {
   $("list").innerHTML = cur.places.map((p, i) => `<button type="button" data-i="${i}"><span class="n">${i + 1}</span>${esc(p.title)}</button>`).join("");
   $("updated").textContent = cur.updatedAt ? "ปรับปรุงล่าสุด " + fmtTime(cur.updatedAt) + (cur.updatedBy ? " โดย ครู" + cur.updatedBy : "") : "";
   if (active >= 0) showCard(active, false); else placeCard(stage, slot, null, -1);
+  if (pendingScroll) { pendingScroll = false; scrollToMap(); }
 }
 function showCard(i, speak, scroll) {
   active = i;
@@ -140,8 +141,19 @@ function onMaps(list, err) {
 }
 
 /* เหตุการณ์ */
-$("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) location.hash = b.dataset.id; });
-$("tgrid").addEventListener("click", e => { const b = e.target.closest(".tcard"); if (b) { location.hash = b.dataset.id; scrollTo({ top: 0 }); } });
+/* เลือกตำบลแล้ว เลื่อนหน้าลงไปที่ภาพแผนที่ของตำบลนั้น */
+let pendingScroll = false;
+function goMap(id) {
+  if (location.hash.slice(1) === id && cur && cur.id === id) scrollToMap();
+  else { pendingScroll = true; location.hash = id; }
+}
+function scrollToMap() {
+  const target = cur && cur.image ? stage : $("noImg");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  requestAnimationFrame(() => target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }));
+}
+$("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) goMap(b.dataset.id); });
+$("tgrid").addEventListener("click", e => { const b = e.target.closest(".tcard"); if (b) goMap(b.dataset.id); });
 $("homeBtn").onclick = () => { location.hash = "home"; };
 stage.addEventListener("mouseover", e => {
   const pin = e.target.closest(".pin"); if (!pin || narrow() || touring) return;
