@@ -6,7 +6,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {
   getAuth, connectAuthEmulator, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, onAuthStateChanged, setPersistence, browserSessionPersistence
+  signOut, onAuthStateChanged, setPersistence, browserSessionPersistence,
+  updatePassword, reauthenticateWithCredential, EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 export const configured = typeof FIREBASE_CONFIG === "object" && !!FIREBASE_CONFIG.apiKey && !!FIREBASE_CONFIG.projectId;
@@ -38,10 +39,12 @@ export function phonePass(s) {
 const newEmail = () => "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + "@teacher.mapthoeng.app";
 function thaiAuthError(e) {
   const c = (e && e.code) || "";
-  if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return "ชื่อหรือเบอร์โทรไม่ถูกต้อง";
+  if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return "ชื่อหรือรหัสผ่านไม่ถูกต้อง";
   if (/too-many-requests/.test(c)) return "ลองเข้าสู่ระบบผิดหลายครั้ง กรุณารอสักครู่แล้วลองใหม่";
   if (/network/.test(c)) return "เชื่อมต่ออินเทอร์เน็ตไม่ได้";
   if (/permission-denied/.test(c)) return "ไม่มีสิทธิ์ทำรายการนี้";
+  if (/weak-password/.test(c)) return "รหัสผ่านสั้นเกินไป ต้องมีอย่างน้อย 6 ตัวอักษร";
+  if (/requires-recent-login/.test(c)) return "กรุณาออกจากระบบแล้วเข้าใหม่ก่อนเปลี่ยนรหัสผ่าน";
   if (/operation-not-allowed/.test(c)) return "ยังไม่ได้เปิดการเข้าสู่ระบบแบบ Email/Password ใน Firebase";
   return (e && e.message) || "เกิดข้อผิดพลาด";
 }
@@ -69,16 +72,21 @@ export async function isSetupDone() {
   catch (e) { throw fail(/permission/i.test(e.code || e.message) ? RULES_MSG : thaiAuthError(e)); }
 }
 export function onUser(cb) { return onAuthStateChanged(auth, cb); }
-export async function login(name, phone) {
-  const key = normName(name), pass = phonePass(phone);
-  if (!key || !pass) throw fail("กรุณากรอกชื่อและเบอร์โทร");
+export async function login(name, password) {
+  const key = normName(name), raw = String(password || "").trim(), asPhone = phonePass(raw);
+  if (!key || !raw) throw fail("กรุณากรอกชื่อและรหัสผ่าน");
   let l;
   try { l = await getDoc(doc(db, "logins", key)); }
   catch (e) { throw fail(/permission/i.test(e.code || e.message) ? RULES_MSG : thaiAuthError(e)); }
-  if (!l.exists()) throw fail("ชื่อหรือเบอร์โทรไม่ถูกต้อง");
+  if (!l.exists()) throw fail("ชื่อหรือรหัสผ่านไม่ถูกต้อง");
   await setPersistence(auth, browserSessionPersistence);
-  try { await signInWithEmailAndPassword(auth, l.data().email, pass); }
-  catch (e) { throw fail(thaiAuthError(e)); }
+  // ลองรหัสผ่านตามที่พิมพ์ก่อน (รหัสที่ครูตั้งเอง) ถ้าไม่ได้ ลองแบบเบอร์โทร (เช่น พิมพ์ 087-xxx หรือ +66)
+  const email = l.data().email;
+  try { await signInWithEmailAndPassword(auth, email, raw); }
+  catch (e) {
+    if (!/invalid-credential|wrong-password|invalid-login/.test(e.code || "") || !asPhone || asPhone === raw) throw fail(thaiAuthError(e));
+    try { await signInWithEmailAndPassword(auth, email, asPhone); } catch (e2) { throw fail(thaiAuthError(e2)); }
+  }
   return await profile();
 }
 export async function profile() {
@@ -173,20 +181,22 @@ export async function listTeachers() {
   const s = await getDocs(collection(db, "teachers"));
   return s.docs.map(d => Object.assign({ uid: d.id }, d.data())).sort((a, b) => (a.role === "main" ? -1 : 0) - (b.role === "main" ? -1 : 0) || a.name.localeCompare(b.name, "th"));
 }
+// ใช้แอปสำรองสร้างบัญชี เพื่อไม่ให้แอดมินหลักถูกออกจากระบบ
+async function createAccount(pass) {
+  const sec = initializeApp(FIREBASE_CONFIG, "sec" + Date.now() + Math.random());
+  const a2 = getAuth(sec);
+  if (EMU) connectAuthEmulator(a2, `http://${EMU.host}:${EMU.auth}`, { disableWarnings: true });
+  const email = newEmail();
+  try { const uid = (await createUserWithEmailAndPassword(a2, email, pass)).user.uid; await signOut(a2); return { uid, email }; }
+  catch (e) { throw fail(thaiAuthError(e)); }
+  finally { deleteApp(sec).catch(() => {}); }
+}
 export async function addTeacher(t) {
   const key = normName(t.name), pass = phonePass(t.phone);
   if (!key) throw fail("กรุณาใส่ชื่อ");
   if (pass.length < 9) throw fail("เบอร์โทรของ " + key + " ไม่ถูกต้อง");
   if ((await getDoc(doc(db, "logins", key))).exists()) throw fail("มีชื่อ " + key + " อยู่แล้ว", { exists: true });
-  // ใช้แอปสำรองสร้างบัญชี เพื่อไม่ให้แอดมินหลักถูกออกจากระบบ
-  const sec = initializeApp(FIREBASE_CONFIG, "sec" + Date.now() + Math.random());
-  const a2 = getAuth(sec);
-  if (EMU) connectAuthEmulator(a2, `http://${EMU.host}:${EMU.auth}`, { disableWarnings: true });
-  const email = newEmail();
-  let uid;
-  try { uid = (await createUserWithEmailAndPassword(a2, email, pass)).user.uid; await signOut(a2); }
-  catch (e) { throw fail(thaiAuthError(e)); }
-  finally { deleteApp(sec).catch(() => {}); }
+  const { uid, email } = await createAccount(pass);
   const b = writeBatch(db);
   b.set(doc(db, "teachers", uid), { name: key, last: String(t.last || "").trim(), phone: pass, role: t.role === "main" ? "main" : "teacher", maps: Array.isArray(t.maps) ? t.maps.slice(0, 50) : [] });
   b.set(doc(db, "logins", key), { email, uid });
@@ -195,6 +205,34 @@ export async function addTeacher(t) {
 export async function deleteTeacher(t) {
   const b = writeBatch(db);
   b.delete(doc(db, "teachers", t.uid)); b.delete(doc(db, "logins", t.name));
+  await b.commit();
+}
+/* ครูเปลี่ยนรหัสผ่านของตัวเอง (ต้องยืนยันรหัสผ่านปัจจุบัน) */
+export async function changePassword(current, next) {
+  const u = auth.currentUser; if (!u) throw fail("กรุณาเข้าสู่ระบบใหม่");
+  next = String(next || "");
+  if (next.length < 6) throw fail("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+  const cur = String(current || "").trim(), alt = phonePass(cur);
+  const tryAuth = p => reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, p));
+  try { await tryAuth(cur); }
+  catch (e) {
+    if (!alt || alt === cur) throw fail("รหัสผ่านปัจจุบันไม่ถูกต้อง");
+    try { await tryAuth(alt); } catch (e2) { throw fail("รหัสผ่านปัจจุบันไม่ถูกต้อง"); }
+  }
+  try { await updatePassword(u, next); } catch (e) { throw fail(thaiAuthError(e)); }
+  await updateDoc(doc(db, "teachers", u.uid), { pwChanged: true });
+}
+/* แอดมินหลักรีเซ็ตรหัสผ่านครูกลับเป็นเบอร์โทร
+   (Firebase แบบฟรีเปลี่ยนรหัสคนอื่นตรง ๆ ไม่ได้ จึงสร้างบัญชีใหม่ที่ใช้เบอร์โทร แล้วย้ายข้อมูลครูไปบัญชีใหม่ บัญชีเก่าใช้ไม่ได้ทันที) */
+export async function resetTeacherPassword(t) {
+  const pass = phonePass(t.phone);
+  if (pass.length < 9) throw fail("ไม่มีเบอร์โทรของครู" + t.name + " ในระบบ");
+  const { uid, email } = await createAccount(pass);
+  const data = { name: t.name, last: t.last || "", phone: pass, role: t.role === "main" ? "main" : "teacher", maps: t.maps || [], pwChanged: false };
+  const b = writeBatch(db);
+  b.set(doc(db, "teachers", uid), data);
+  b.delete(doc(db, "teachers", t.uid));
+  b.set(doc(db, "logins", t.name), { email, uid });
   await b.commit();
 }
 export async function setTeacherMaps(t, ids) { await updateDoc(doc(db, "teachers", t.uid), { maps: ids.slice(0, 50) }); }

@@ -49,6 +49,16 @@ label small{font-weight:400;color:var(--muted)}
 .tname{font-family:var(--display);font-weight:700;font-size:1.15rem;color:var(--accent);padding:0 14px}
 .tmeta{font-size:.9rem;color:var(--muted);padding:0 14px}
 .navrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+/* ส่วนหัวหน้าผู้ชม แบ่ง 3 ส่วน: หัวเรื่อง / คำแนะนำ / เลือกตำบล */
+.hd{display:flex;flex-direction:column;gap:12px;align-items:center}
+.hd-title{width:100%;border-radius:18px;padding:18px 16px;border:1px solid var(--line);background:linear-gradient(120deg,color-mix(in srgb,var(--accent) 12%,var(--surface)),var(--surface) 50%,color-mix(in srgb,var(--gold) 16%,var(--surface)));box-shadow:0 8px 24px -16px var(--shadow)}
+.hd-tip{display:flex;align-items:center;gap:8px;margin:0;width:fit-content;max-width:100%;padding:6px 16px;border-radius:999px;background:color-mix(in srgb,var(--gold) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);color:var(--fg);font-size:.98rem;text-align:center}
+.tip-ico{font-size:1.1rem}
+.tambonbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;border-top:4px solid var(--accent)}
+.tb-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.tb-label{font-family:var(--display);font-weight:700;color:var(--accent);font-size:1.05rem}
+.tambonbox .tabs{justify-content:flex-start}
+.tambonbox .tabs button{padding:6px 14px;font-size:.95rem}
 
 /* หน้าผู้ชม: ภาพแผนที่สูงไม่เกินจอ เพื่อให้เห็นภาพและข้อมูลใต้ภาพพร้อมกัน */
 .viewer .stage{width:fit-content;max-width:100%;margin-inline:auto}

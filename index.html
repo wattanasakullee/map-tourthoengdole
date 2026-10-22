@@ -9,9 +9,9 @@
 </head>
 <body class="viewer">
 <div class="wrap">
-  <header>
-    <h1 class="page-title" id="mapTitle">แผนที่แหล่งเรียนรู้ อำเภอเทิง</h1>
-    <p class="sub" id="subTitle">เลือกตำบลที่ต้องการชม</p>
+  <header class="hd">
+    <div class="hd-title"><h1 class="page-title" id="mapTitle">แผนที่แหล่งเรียนรู้ อำเภอเทิง</h1></div>
+    <p class="hd-tip"><span class="tip-ico" aria-hidden="true">👆</span><span id="subTitle">เลือกตำบลที่ต้องการชม</span></p>
   </header>
 
   <div class="msg" id="state">กำลังโหลดแผนที่…</div>
@@ -23,8 +23,11 @@
 
   <!-- หน้าแผนที่ของแต่ละตำบล -->
   <section id="mapView" hidden style="display:flex;flex-direction:column;gap:16px">
-  <div class="navrow">
-    <button type="button" id="homeBtn">← หน้าแรก (ทุกตำบล)</button>
+  <div class="tambonbox">
+    <div class="tb-head">
+      <span class="tb-label">📍 เลือกดูตำบลอื่น</span>
+      <button type="button" id="homeBtn">← หน้าแรก (ทุกตำบล)</button>
+    </div>
     <nav class="tabs" id="tabs" aria-label="เลือกตำบล"></nav>
   </div>
 

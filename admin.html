@@ -19,7 +19,7 @@
   <form class="panel login" id="loginForm" hidden>
     <h2>เข้าสู่ระบบ</h2>
     <label for="lName">ชื่อ (ใส่เฉพาะชื่อ ไม่ต้องใส่นามสกุล)<input id="lName" autocomplete="username" placeholder="เช่น วนศาสตร์" required></label>
-    <label for="lPhone">รหัสผ่าน (เบอร์โทรศัพท์)<span class="pw"><input id="lPhone" type="password" inputmode="numeric" autocomplete="current-password" placeholder="เช่น 08xxxxxxxx" required><button type="button" class="eye" data-for="lPhone" aria-label="แสดงรหัสผ่าน" aria-pressed="false"></button></span></label>
+    <label for="lPhone">รหัสผ่าน <small>(ครั้งแรกใช้เบอร์โทรศัพท์)</small><span class="pw"><input id="lPhone" type="password" autocomplete="current-password" placeholder="เบอร์โทร หรือรหัสผ่านที่ตั้งใหม่" required><button type="button" class="eye" data-for="lPhone" aria-label="แสดงรหัสผ่าน" aria-pressed="false"></button></span></label>
     <button type="submit" class="primary" id="lBtn" style="justify-content:center">เข้าสู่ระบบ</button>
     <p class="hint" id="lMsg" role="alert"></p>
   </form>
@@ -43,9 +43,24 @@
         <a class="btn" href="index.html" target="_blank" rel="noopener">👁 เปิดหน้าผู้ชม</a>
         <button type="button" id="tabMap" class="on">🗺 แก้ไขแผนที่</button>
         <button type="button" id="tabTeach" hidden>👥 จัดการครู</button>
+        <button type="button" id="pwBtn">🔑 เปลี่ยนรหัสผ่าน</button>
         <button type="button" id="logout">ออกจากระบบ</button>
       </div>
     </div>
+
+    <!-- เปลี่ยนรหัสผ่าน -->
+    <form class="panel" id="pwForm" hidden style="max-width:520px;width:100%;margin-inline:auto">
+      <h2>เปลี่ยนรหัสผ่าน</h2>
+      <p class="hint">ถ้าลืมรหัสผ่านใหม่ ให้ติดต่อแอดมินหลักเพื่อรีเซ็ตกลับเป็นเบอร์โทรศัพท์</p>
+      <label for="pwCur">รหัสผ่านปัจจุบัน <small>(ถ้ายังไม่เคยเปลี่ยน คือเบอร์โทรศัพท์)</small><span class="pw"><input id="pwCur" type="password" autocomplete="current-password" required><button type="button" class="eye" data-for="pwCur" aria-label="แสดงรหัสผ่าน" aria-pressed="false"></button></span></label>
+      <label for="pwNew">รหัสผ่านใหม่ <small>(อย่างน้อย 6 ตัวอักษร)</small><span class="pw"><input id="pwNew" type="password" autocomplete="new-password" required><button type="button" class="eye" data-for="pwNew" aria-label="แสดงรหัสผ่าน" aria-pressed="false"></button></span></label>
+      <label for="pwNew2">พิมพ์รหัสผ่านใหม่อีกครั้ง<span class="pw"><input id="pwNew2" type="password" autocomplete="new-password" required><button type="button" class="eye" data-for="pwNew2" aria-label="แสดงรหัสผ่าน" aria-pressed="false"></button></span></label>
+      <div class="bar" style="justify-content:flex-start">
+        <button type="submit" class="primary" id="pwSave">บันทึกรหัสผ่านใหม่</button>
+        <button type="button" id="pwCancel">ยกเลิก</button>
+      </div>
+      <p class="hint" id="pwMsg" role="alert"></p>
+    </form>
 
     <!-- แก้ไขแผนที่ -->
     <section id="secMap" style="display:flex;flex-direction:column;gap:16px">
@@ -196,7 +211,7 @@ function showApp(u) {
   // ถ้าบัญชีถูกลบ เปลี่ยนสิทธิ์ หรือเปลี่ยนตำบลที่ดูแล ให้มีผลทันที
   if (unMe) unMe();
   unMe = F.watchProfile(user.uid, p => {
-    if (!p) { dirty = false; F.logout(); showLogin("บัญชีนี้ถูกลบแล้ว"); return; }
+    if (!p) { dirty = false; F.logout(); showLogin("บัญชีถูกลบหรือรหัสผ่านถูกรีเซ็ต กรุณาเข้าสู่ระบบใหม่"); return; }
     const before = JSON.stringify([user.role, user.maps || []]);
     user = p; applyRole();
     if (before !== JSON.stringify([p.role, p.maps || []])) refreshMapList();
@@ -218,6 +233,18 @@ $("setupForm").addEventListener("submit", async e => {
     showApp(u); showTab("teach"); toast("ตั้งค่าเรียบร้อย นำเข้ารายชื่อครูได้เลย");
   } catch (err) { $("sMsg").textContent = err.message; }
   $("sBtn").disabled = false;
+});
+/* เปลี่ยนรหัสผ่านของตัวเอง */
+$("pwBtn").onclick = () => { const f = $("pwForm"); f.hidden = !f.hidden; $("pwMsg").textContent = ""; if (!f.hidden) $("pwCur").focus(); };
+$("pwCancel").onclick = () => { $("pwForm").reset(); $("pwForm").hidden = true; };
+$("pwForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $("pwMsg"); msg.classList.add("err");
+  if ($("pwNew").value !== $("pwNew2").value) { msg.textContent = "รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน"; return; }
+  $("pwSave").disabled = true; msg.classList.remove("err"); msg.textContent = "กำลังบันทึก…";
+  try { await F.changePassword($("pwCur").value, $("pwNew").value); $("pwForm").reset(); $("pwForm").hidden = true; toast("เปลี่ยนรหัสผ่านแล้ว ครั้งหน้าใช้รหัสใหม่เข้าสู่ระบบ"); }
+  catch (err) { msg.classList.add("err"); msg.textContent = err.message; }
+  $("pwSave").disabled = false;
 });
 $("logout").onclick = async () => { if (dirty && !confirmTwice($("logout"), "ออกโดยไม่บันทึก?")) return; dirty = false; await F.logout(); showLogin("ออกจากระบบแล้ว"); };
 
@@ -406,12 +433,13 @@ $("tabTeach").onclick = () => showTab("teach");
 function renderTeachers() {
   $("tCount").textContent = "(" + teachers.length + " คน)";
   $("tBody").innerHTML = teachers.map((t, i) => `<tr>
-    <td>${esc(t.name)}</td><td>${esc(t.last)}</td><td class="num">${esc(t.phone)}</td>
+    <td>${esc(t.name)}</td><td>${esc(t.last)}</td><td class="num">${esc(t.phone)}${t.pwChanged ? '<br><span class="hint">เปลี่ยนรหัสผ่านเองแล้ว</span>' : ""}</td>
     <td>${t.role === "main" ? '<span class="badge">แอดมินหลัก</span>' : "ครู"}</td>
     <td class="wrapcell">${t.role === "main" ? '<span class="hint">ทุกตำบล</span>' : `${(t.maps || []).map(mapName).filter(Boolean).map(esc).join(", ") || '<span class="hint">ยังไม่กำหนด</span>'}
       <button type="button" data-assign="${i}">กำหนดตำบล</button>`}</td>
     <td>${t.uid === user.uid ? '<span class="hint">บัญชีของคุณ</span>' : `
       <button type="button" data-role="${i}">${t.role === "main" ? "ปรับเป็นครู" : "ตั้งเป็นแอดมินหลัก"}</button>
+      <button type="button" data-reset="${i}">รีเซ็ตรหัสเป็นเบอร์โทร</button>
       <button type="button" class="danger" data-del="${i}">ลบ</button>`}</td></tr>
     ${assigning === t.uid ? `<tr class="assignrow"><td colspan="6"><fieldset class="mapchecks" id="aMaps"><legend>ตำบลที่ครู${esc(t.name)}แก้ไขได้</legend></fieldset>
       <div class="bar" style="justify-content:flex-start;margin-top:8px"><button type="button" class="primary" data-savemaps="${i}">บันทึกตำบล</button><button type="button" data-cancelassign="1">ยกเลิก</button></div></td></tr>` : ""}`).join("");
@@ -429,6 +457,11 @@ $("tBody").addEventListener("click", async e => {
     if (b.dataset.savemaps) {
       const ids = [...$("aMaps").querySelectorAll("input:checked")].map(c => c.value);
       await F.setTeacherMaps(teachers[+b.dataset.savemaps], ids); assigning = null; toast("บันทึกตำบลที่ดูแลแล้ว");
+    }
+    else if (b.dataset.reset) {
+      if (!confirmTwice(b, "กดอีกครั้งเพื่อยืนยันรีเซ็ต")) return;
+      const t = teachers[+b.dataset.reset]; await F.resetTeacherPassword(t);
+      toast("รีเซ็ตแล้ว ครู" + t.name + " เข้าระบบด้วยเบอร์ " + t.phone);
     }
     else if (b.dataset.del) { if (!confirmTwice(b, "ยืนยันลบ?")) return; await F.deleteTeacher(teachers[+b.dataset.del]); toast("ลบแล้ว"); }
     else if (b.dataset.role) { const t = teachers[+b.dataset.role]; await F.setRole(t, t.role === "main" ? "teacher" : "main"); toast("เปลี่ยนสิทธิ์แล้ว"); }
