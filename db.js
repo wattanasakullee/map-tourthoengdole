@@ -63,12 +63,18 @@ export async function imageSrc(m) {
 }
 
 /* ---------- เข้าสู่ระบบ ---------- */
-export async function isSetupDone() { return (await getDoc(doc(db, "meta", "setup"))).exists(); }
+const RULES_MSG = "Firebase ไม่อนุญาตให้อ่านข้อมูล: กรุณาวางกฎจากไฟล์ firestore.rules ที่ Firestore Database > Rules แล้วกด Publish จากนั้นรีเฟรชหน้านี้";
+export async function isSetupDone() {
+  try { return (await getDoc(doc(db, "meta", "setup"))).exists(); }
+  catch (e) { throw fail(/permission/i.test(e.code || e.message) ? RULES_MSG : thaiAuthError(e)); }
+}
 export function onUser(cb) { return onAuthStateChanged(auth, cb); }
 export async function login(name, phone) {
   const key = normName(name), pass = phonePass(phone);
   if (!key || !pass) throw fail("กรุณากรอกชื่อและเบอร์โทร");
-  const l = await getDoc(doc(db, "logins", key));
+  let l;
+  try { l = await getDoc(doc(db, "logins", key)); }
+  catch (e) { throw fail(/permission/i.test(e.code || e.message) ? RULES_MSG : thaiAuthError(e)); }
   if (!l.exists()) throw fail("ชื่อหรือเบอร์โทรไม่ถูกต้อง");
   await setPersistence(auth, browserSessionPersistence);
   try { await signInWithEmailAndPassword(auth, l.data().email, pass); }
