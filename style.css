@@ -50,6 +50,11 @@ label small{font-weight:400;color:var(--muted)}
 .tmeta{font-size:.9rem;color:var(--muted);padding:0 14px}
 .navrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
 
+/* หน้าผู้ชม: ภาพแผนที่สูงไม่เกินจอ เพื่อให้เห็นภาพและข้อมูลใต้ภาพพร้อมกัน */
+.viewer .stage{width:fit-content;max-width:100%;margin-inline:auto}
+.viewer .stage img.map{width:auto;max-width:100%;max-height:68vh}
+.viewer #cardSlot:empty{display:none}
+
 /* map stage */
 .stage{position:relative;width:100%;user-select:none;-webkit-user-select:none}
 .stage img.map{display:block;width:100%;height:auto;border-radius:16px;-webkit-user-drag:none;background:var(--surface);min-height:120px}
@@ -61,14 +66,13 @@ label small{font-weight:400;color:var(--muted)}
 .editmode .pin{cursor:grab;background:var(--danger)}
 .editmode .pin.active{background:var(--gold)}
 .editmode img.map{cursor:crosshair}
-.card{position:absolute;z-index:5;width:min(330px,80vw);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 12px 30px -8px var(--shadow);display:flex;flex-direction:column;gap:6px}
+.card{position:relative;z-index:5;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 12px 30px -8px var(--shadow);display:flex;flex-direction:column;gap:6px}
 .card h2{font-weight:700;font-size:1.15rem;color:var(--accent);padding-right:30px}
 .card p{margin:0;white-space:pre-line}
 .card .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
 .card .x{position:absolute;top:8px;right:8px;width:28px;height:28px;padding:0;justify-content:center}
 .card a{color:var(--accent);font-weight:600}
 @media (max-width:640px){
-  .card{position:relative;left:auto!important;top:auto!important;width:100%}
   .pin{width:30px;height:30px;font-size:.9rem;border-width:2px}
 }
 .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}

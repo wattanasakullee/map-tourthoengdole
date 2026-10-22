@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=K2D:wght@500;700&family=Sarabun:wght@400;600&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="viewer">
 <div class="wrap">
   <header>
     <h1 class="page-title" id="mapTitle">แผนที่แหล่งเรียนรู้ อำเภอเทิง</h1>
@@ -116,10 +116,10 @@ function selectMap(id, keepCard) {
   $("updated").textContent = cur.updatedAt ? "ปรับปรุงล่าสุด " + fmtTime(cur.updatedAt) + (cur.updatedBy ? " โดย ครู" + cur.updatedBy : "") : "";
   if (active >= 0) showCard(active, false); else placeCard(stage, slot, null, -1);
 }
-function showCard(i, speak) {
+function showCard(i, speak, scroll) {
   active = i;
   const p = cur && cur.places[i];
-  placeCard(stage, slot, p, i, { onclose: () => active = -1 });
+  placeCard(stage, slot, p, i, { onclose: () => active = -1, scroll: !!scroll });
   if (p && speak) return Voice.speak([p.title, p.text]);
   return Promise.resolve();
 }
@@ -147,16 +147,14 @@ stage.addEventListener("mouseover", e => {
 stage.addEventListener("click", e => {
   touched = true;
   const pin = e.target.closest(".pin"); if (!pin) return;
-  stopTour(); showCard(+pin.dataset.i, true);
+  stopTour(); showCard(+pin.dataset.i, true, true);
 });
 $("list").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  touched = true; stopTour(); showCard(+b.dataset.i, true);
-  if (!narrow()) stage.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  touched = true; stopTour(); showCard(+b.dataset.i, true, true);
 });
-document.addEventListener("click", e => { if (!narrow() && !e.target.closest(".pin,.card,.list,.bar,.voicebox,.tabs")) { active = -1; placeCard(stage, slot, null, -1); } });
+
 document.addEventListener("keydown", e => { if (e.key === "Escape") { Voice.stop(); stopTour(); active = -1; placeCard(stage, slot, null, -1); } });
-window.addEventListener("resize", () => { if (active >= 0 && cur) showCard(active, false); });
 window.addEventListener("hashchange", route);
 
 function setVoiceBtn() { $("voiceBtn").textContent = "🔊 เสียงอ่าน: " + (Voice.on ? "เปิด" : "ปิด"); $("voiceBtn").classList.toggle("on", Voice.on); $("voiceBtn").setAttribute("aria-pressed", Voice.on); }
@@ -177,8 +175,8 @@ $("tourBtn").onclick = async () => {
   for (let i = 0; i < cur.places.length; i++) {
     if (run !== tourRun) return;
     const p = cur.places[i];
-    if (Voice.on && Voice.synth && Voice.voices.length) await showCard(i, true);
-    else { showCard(i, false); await new Promise(r => setTimeout(r, Math.max(3500, (p.text || "").length * 80))); }
+    if (Voice.on && Voice.synth && Voice.voices.length) await showCard(i, true, true);
+    else { showCard(i, false, true); await new Promise(r => setTimeout(r, Math.max(3500, (p.text || "").length * 80))); }
     if (run !== tourRun) return;
     await new Promise(r => setTimeout(r, 800));
   }

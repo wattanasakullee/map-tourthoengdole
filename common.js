@@ -120,16 +120,9 @@ function placeCard(stage, slot, p, i, opts) {
     <div class="row">${opts && opts.noSpeak ? "" : `<button type="button" class="say">🔊 ฟัง</button>`}${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">📍 ดูแผนที่ / ข้อมูลเพิ่ม</a>` : ""}</div>`;
   c.querySelector(".x").onclick = () => { Voice.stop(); placeCard(stage, slot, null, -1); if (opts && opts.onclose) opts.onclose(); };
   const say = c.querySelector(".say"); if (say) say.onclick = () => Voice.speak([p.title, p.text]);
-  if (narrow()) { slot.appendChild(c); c.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
-  else {
-    stage.appendChild(c);
-    const W = stage.clientWidth, H = stage.clientHeight, cw = c.offsetWidth, ch = c.offsetHeight;
-    let x = p.x / 100 * W + 26, y = p.y / 100 * H - ch / 2;
-    if (x + cw > W) x = p.x / 100 * W - cw - 26;
-    if (x < 0) x = 4;
-    y = Math.max(4, Math.min(H - ch - 4, y));
-    c.style.left = x + "px"; c.style.top = y + "px";
-  }
+  // แสดงข้อมูลใต้ภาพเสมอ ไม่บังแผนที่
+  slot.appendChild(c);
+  if (opts && opts.scroll) c.scrollIntoView({ block: "nearest", behavior: "smooth" });
   return c;
 }
 
