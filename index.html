@@ -46,12 +46,10 @@
   </div>
   <div id="cardSlot"></div>
   <div class="list" id="list" aria-label="รายชื่อสถานที่"></div>
-  <p class="note" id="updated"></p>
   </section>
 
   <footer class="credit">
-    สร้างสรรค์โดย <strong>นายวนศาสตร์ วัฒนาสกุลลี</strong><br>
-    ครู สกร.ระดับอำเภอเทิง
+    สร้างสรรค์โดย <strong>ครู สกร.ระดับอำเภอเทิง</strong>
   </footer>
 </div>
 
@@ -116,7 +114,6 @@ function selectMap(id, keepCard) {
   if (active >= cur.places.length) active = -1;
   renderPins(stage, cur.places, active);
   $("list").innerHTML = cur.places.map((p, i) => `<button type="button" data-i="${i}"><span class="n">${i + 1}</span>${esc(p.title)}</button>`).join("");
-  $("updated").textContent = cur.updatedAt ? "ปรับปรุงล่าสุด " + fmtTime(cur.updatedAt) + (cur.updatedBy ? " โดย ครู" + cur.updatedBy : "") : "";
   if (active >= 0) showCard(active, false); else placeCard(stage, slot, null, -1);
   if (pendingScroll) { pendingScroll = false; scrollToMap(); }
 }
