@@ -40,6 +40,10 @@
   <div class="voicebox" id="voiceBox" hidden></div>
   <p class="note" id="voiceNote"></p>
 
+  <details class="introvid" id="introVid" hidden>
+    <summary>🎬 ดูวิดีโอแนะนำตำบล</summary>
+    <div id="introBody"></div>
+  </details>
   <div class="msg" id="noImg" hidden>ตำบลนี้ยังไม่มีภาพแผนที่ ครูกำลังจัดทำ</div>
   <div class="stage" id="stage">
     <img class="map" id="mapImg" alt="" draggable="false">
@@ -105,6 +109,9 @@ function selectMap(id, keepCard) {
   stage.hidden = !cur.image; $("noImg").hidden = !!cur.image;
   $("subTitle").textContent = "ชี้เมาส์หรือแตะที่หมุดตัวเลข เพื่ออ่านและฟังข้อมูลแต่ละสถานที่";
   $("mapTitle").textContent = cur.title || cur.name;
+  const iv = $("introVid");
+  if (iv.dataset.url !== (cur.video || "")) { iv.dataset.url = cur.video || ""; iv.open = false; $("introBody").innerHTML = ""; }
+  iv.hidden = !cur.video;
   document.title = cur.title || "แผนที่แหล่งเรียนรู้";
   const img = $("mapImg");
   img.alt = "ภาพแผนที่ " + (cur.name || "");
@@ -138,6 +145,8 @@ function onMaps(list, err) {
 }
 
 /* เหตุการณ์ */
+/* โหลดวิดีโอแนะนำเมื่อกดเปิดเท่านั้น หน้าเว็บจะได้ไม่ช้า */
+$("introVid").addEventListener("toggle", () => { const iv = $("introVid"); if (iv.open && !$("introBody").innerHTML && cur) $("introBody").innerHTML = videoHTML(cur.video, "วิดีโอแนะนำ" + cur.name); });
 /* เลือกตำบลแล้ว เลื่อนหน้าลงไปที่ภาพแผนที่ของตำบลนั้น */
 let pendingScroll = false;
 function goMap(id) {

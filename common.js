@@ -120,6 +120,31 @@ function mountVoiceBox(box, noteEl) {
   box.querySelector("#vTest").onclick = () => { const was = Voice.on; Voice.on = true; Voice.speak("สวัสดี ยินดีต้อนรับสู่แผนที่แหล่งเรียนรู้ อำเภอเทิง"); Voice.on = was; };
 }
 
+/* ---------- วิดีโอ: YouTube / Google Drive / Facebook / TikTok / ไฟล์ .mp4 ---------- */
+function videoEmbed(url) {
+  url = String(url || "").trim(); if (!/^https?:\/\//i.test(url)) return null;
+  let m;
+  if ((m = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/i.exec(url)))
+    return { type: "iframe", src: "https://www.youtube-nocookie.com/embed/" + m[1] + "?rel=0", vertical: /shorts\//i.test(url) };
+  if ((m = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]+)/i.exec(url)))
+    return { type: "iframe", src: "https://drive.google.com/file/d/" + m[1] + "/preview" };
+  if (/facebook\.com|fb\.watch/i.test(url))
+    return { type: "iframe", src: "https://www.facebook.com/plugins/video.php?show_text=false&href=" + encodeURIComponent(url) };
+  if ((m = /tiktok\.com\/.*\/video\/(\d+)/i.exec(url)))
+    return { type: "iframe", src: "https://www.tiktok.com/embed/v2/" + m[1], vertical: true };
+  if (/\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url)) return { type: "video", src: url };
+  return { type: "link", src: url };
+}
+function videoHTML(url, title) {
+  const v = videoEmbed(url); if (!v) return "";
+  const open = `<a class="vlink" href="${esc(url)}" target="_blank" rel="noopener">▶ เปิดวิดีโอในแท็บใหม่</a>`;
+  if (v.type === "link") return `<div class="vbox">${open}</div>`;
+  const player = v.type === "video"
+    ? `<video controls playsinline preload="metadata" src="${esc(v.src)}"></video>`
+    : `<iframe src="${esc(v.src)}" title="${esc(title || "วิดีโอ")}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+  return `<div class="vbox"><div class="vframe${v.vertical ? " vertical" : ""}">${player}</div>${open}</div>`;
+}
+
 /* ---------- วาดหมุดและกล่องข้อความ ---------- */
 function renderPins(stage, places, active) {
   stage.querySelectorAll(".pin").forEach(n => n.remove());
@@ -139,7 +164,7 @@ function placeCard(stage, slot, p, i, opts) {
   const c = document.createElement("div");
   c.className = "card"; c.setAttribute("role", "dialog"); c.setAttribute("aria-label", p.title || "");
   c.innerHTML = `<button type="button" class="x" aria-label="ปิด">✕</button>
-    <h2>${i + 1}. ${esc(p.title)}</h2><p>${esc(p.text)}</p>
+    <h2>${i + 1}. ${esc(p.title)}</h2>${videoHTML(p.video, p.title)}<p>${esc(p.text)}</p>
     <div class="row">${opts && opts.noSpeak ? "" : `<button type="button" class="say">🔊 ฟัง</button>`}${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">📍 ดูแผนที่ / ข้อมูลเพิ่ม</a>` : ""}</div>`;
   c.querySelector(".x").onclick = () => { Voice.stop(); placeCard(stage, slot, null, -1); if (opts && opts.onclose) opts.onclose(); };
   const say = c.querySelector(".say"); if (say) say.onclick = () => Voice.speak([p.title, p.text]);
