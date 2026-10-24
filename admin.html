@@ -84,9 +84,7 @@
         <div class="grid2">
           <label for="fName">ชื่อตำบล (แสดงบนปุ่มเลือก)<input id="fName"></label>
           <label for="fTitle">ชื่อแผนที่ (หัวเรื่องด้านบน)<input id="fTitle"></label>
-          <label for="fVideo" style="grid-column:1/-1">🎬 วิดีโอแนะนำตำบล <small>(ถ้ามี · ลิงก์ YouTube, Google Drive, Facebook หรือ TikTok)</small><input id="fVideo" placeholder="https://youtu.be/…"></label>
         </div>
-        <div id="fVideoPrev"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <label class="btn" for="fImg" style="flex-direction:row;font-weight:400;cursor:pointer">🖼 เปลี่ยนภาพแผนที่<input type="file" id="fImg" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px"></label>
           <span class="hint" id="imgMsg">แตะที่ว่างบนภาพเพื่อเพิ่มหมุด · ลากหมุดสีแดงเพื่อย้าย · แตะหมุดเพื่อแก้ข้อความ</span>
@@ -101,9 +99,6 @@
           <label for="pTitle">ชื่อสถานที่<input id="pTitle"></label>
           <label for="pText">คำอธิบาย <small>(ข้อความนี้จะถูกอ่านออกเสียง)</small><textarea id="pText"></textarea></label>
           <label for="pLink">ลิงก์ Google Maps หรือเว็บไซต์ <small>(ถ้ามี)</small><input id="pLink" placeholder="https://"></label>
-          <label for="pVideo">🎬 วิดีโอของสถานที่นี้ <small>(ถ้ามี · ลิงก์ YouTube, Google Drive, Facebook หรือ TikTok)</small><input id="pVideo" placeholder="https://youtu.be/…"></label>
-          <p class="hint">วิธีเพิ่มวิดีโอ: อัปโหลดวิดีโอขึ้น YouTube (ตั้งเป็น "ไม่เป็นสาธารณะ" ก็ได้) หรือ Google Drive (แชร์แบบ "ทุกคนที่มีลิงก์") แล้วคัดลอกลิงก์มาวาง</p>
-          <div id="pVideoPrev"></div>
           <div class="bar" style="justify-content:flex-start">
             <button type="button" id="pTest">🔊 ทดลองฟัง</button>
             <button type="button" id="pDel" class="danger">🗑 ลบหมุดนี้</button>
@@ -298,8 +293,6 @@ function renderEditor() {
   if (!has) return;
   if (document.activeElement !== $("fName")) $("fName").value = draft.name || "";
   if (document.activeElement !== $("fTitle")) $("fTitle").value = draft.title || "";
-  if (document.activeElement !== $("fVideo")) $("fVideo").value = draft.video || "";
-  showVideoPrev("fVideoPrev", draft.video, draft.name);
   const img = $("mapImg");
   const key = draft.newImage ? "new:" + draft.newImage.length : draft.id + ":" + draft.image + ":" + (draft.imageRev || 0);
   if (img.dataset.key !== key) {
@@ -328,8 +321,6 @@ function renderPinsAll() {
     if (document.activeElement !== $("pTitle")) $("pTitle").value = f.title;
     if (document.activeElement !== $("pText")) $("pText").value = f.text;
     if (document.activeElement !== $("pLink")) $("pLink").value = f.link || "";
-    if (document.activeElement !== $("pVideo")) $("pVideo").value = f.video || "";
-    showVideoPrev("pVideoPrev", f.video, f.title);
   }
 }
 function select(i) { sel = i; renderPinsAll(); }
@@ -370,15 +361,6 @@ $("pinRows").addEventListener("click", e => {
   [draft.places[i], draft.places[j]] = [draft.places[j], draft.places[i]];
   setDirty(true); select(j);
 });
-function showVideoPrev(id, url, title) {
-  const box = $(id); if (box.dataset.url === (url || "")) return;
-  box.dataset.url = url || "";
-  const v = videoEmbed(url);
-  box.innerHTML = !url ? "" : !v ? '<p class="hint err">ลิงก์วิดีโอต้องขึ้นต้นด้วย https://</p>'
-    : (v.type === "link" ? '<p class="hint">ลิงก์นี้ฝังวิดีโอในหน้าไม่ได้ ผู้ชมจะเห็นเป็นปุ่ม "เปิดวิดีโอในแท็บใหม่"</p>' : '<p class="hint">ตัวอย่างที่ผู้ชมจะเห็น:</p>') + videoHTML(url, title);
-}
-$("pVideo").addEventListener("input", () => { if (sel < 0) return; draft.places[sel].video = $("pVideo").value.trim(); setDirty(true); clearTimeout(window.__vt); window.__vt = setTimeout(() => showVideoPrev("pVideoPrev", draft.places[sel] && draft.places[sel].video, ""), 600); });
-$("fVideo").addEventListener("input", () => { draft.video = $("fVideo").value.trim(); setDirty(true); clearTimeout(window.__vt2); window.__vt2 = setTimeout(() => showVideoPrev("fVideoPrev", draft.video, draft.name), 600); });
 [["pTitle", "title"], ["pText", "text"], ["pLink", "link"]].forEach(([id, k]) => $(id).addEventListener("input", () => {
   if (sel < 0) return; draft.places[sel][k] = $(id).value; setDirty(true);
   const t = $("pinRows").querySelector(`[data-sel="${sel}"]`); if (t && k === "title") t.textContent = $(id).value || "(ไม่มีชื่อ)";

@@ -6,16 +6,21 @@ service cloud.firestore {
     function teacherDoc() { return /databases/$(database)/documents/teachers/$(request.auth.uid); }
     function isTeacher() { return signedIn() && exists(teacherDoc()); }
     function isMain() { return isTeacher() && get(teacherDoc()).data.role == 'main'; }
+    function myMaps() { return get(teacherDoc()).data.get('maps', []); }
+    function canEditMap(id) { return isMain() || (isTeacher() && id in myMaps()); }
     function firstSetup() { return !exists(/databases/$(database)/documents/meta/setup); }
 
-    // แผนที่และภาพ: ทุกคนดูได้ เฉพาะครูที่อยู่ในรายชื่อแก้ไขได้
+    // แผนที่และภาพ: ทุกคนดูได้
+    // ครูแก้ไขได้เฉพาะตำบลที่ได้รับมอบหมาย แอดมินหลักแก้ไข เพิ่ม และลบได้ทุกตำบล
     match /maps/{id} {
       allow read: if true;
-      allow write: if isTeacher();
+      allow create, delete: if isMain();
+      allow update: if canEditMap(id);
     }
     match /mapImages/{id} {
       allow read: if true;
-      allow write: if isTeacher() && (request.resource == null || request.resource.data.data.size() < 1000000);
+      allow delete: if isMain();
+      allow create, update: if canEditMap(id) && request.resource.data.data.size() < 1000000;
     }
 
     // ชื่อสำหรับเข้าสู่ระบบ (ไม่มีเบอร์โทร)
@@ -29,6 +34,9 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == uid || isMain());
       allow write: if isMain()
         || (firstSetup() && signedIn() && request.auth.uid == uid && request.resource.data.role == 'main');
+      // ครูบันทึกได้เพียงว่า "เปลี่ยนรหัสผ่านแล้ว" ในข้อมูลของตัวเอง
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pwChanged']);
     }
 
     match /meta/{docId} {

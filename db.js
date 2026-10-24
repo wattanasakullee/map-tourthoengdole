@@ -124,8 +124,7 @@ export async function saveMap(m, baseUpdatedAt, by) {
   const places = (m.places || []).slice(0, 40).map(p => ({
     x: Math.max(0, Math.min(100, +p.x || 0)), y: Math.max(0, Math.min(100, +p.y || 0)),
     title: String(p.title || "").slice(0, 120), text: String(p.text || "").slice(0, 2000),
-    link: /^https?:\/\//i.test(p.link || "") ? String(p.link).slice(0, 500) : "",
-    video: /^https?:\/\//i.test(p.video || "") ? String(p.video).slice(0, 500) : ""
+    link: /^https?:\/\//i.test(p.link || "") ? String(p.link).slice(0, 500) : ""
   }));
   if (m.newImage && m.newImage.length > MAX_IMAGE_CHARS) throw fail("ภาพใหญ่เกินไป กรุณาใช้ภาพที่เล็กลง");
   try {
@@ -136,8 +135,7 @@ export async function saveMap(m, baseUpdatedAt, by) {
       if (baseUpdatedAt && c.updatedAt && c.updatedAt !== baseUpdatedAt)
         throw fail("ครู" + (c.updatedBy || "ท่านอื่น") + " เพิ่งบันทึกตำบลนี้ก่อนหน้า กรุณาโหลดข้อมูลล่าสุดก่อนแก้ไข", { conflict: true });
       const now = Date.now();
-      const data = { name: String(m.name || "").slice(0, 80), title: String(m.title || "").slice(0, 150), places, updatedAt: now, updatedBy: by,
-        video: /^https?:\/\//i.test(m.video || "") ? String(m.video).slice(0, 500) : "" };
+      const data = { name: String(m.name || "").slice(0, 80), title: String(m.title || "").slice(0, 150), places, updatedAt: now, updatedBy: by };
       if (m.newImage) { tx.set(doc(db, "mapImages", m.id), { data: m.newImage }); data.image = "firestore"; data.imageRev = now; data.thumb = m.newThumb || ""; }
       else data.image = String(m.image || "").slice(0, 500);
       tx.update(ref, data);
