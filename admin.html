@@ -439,6 +439,8 @@ function renderRoutes() {
   $("routeRows").innerHTML = rs.map((r, i) => `<div class="pinrow${i === drawing ? " sel" : ""}">
       <span class="t">${ROUTE_TYPES[r.type].icon} ${ROUTE_TYPES[r.type].label} · ${r.pts.length} จุด${i === drawing ? " (กำลังวาด)" : ""}</span>
       <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">จำนวน<select data-rn="${i}" style="width:auto">${[1, 2, 3, 4, 5].map(n => `<option ${n === r.n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">ขนาด<select data-rz="${i}" style="width:auto">${SIZES.map(o => `<option value="${o.v}" ${Math.abs(o.v - (r.sz || 1)) < .01 ? "selected" : ""}>${o.t}</option>`).join("")}</select></label>
+      <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">ความเร็ว<select data-rs="${i}" style="width:auto">${SPEEDS.map(o => `<option value="${o.v}" ${Math.abs(o.v - (r.sp || 1)) < .01 ? "selected" : ""}>${o.t}</option>`).join("")}</select></label>
       <button type="button" class="danger" data-rdel="${i}">ลบ</button></div>`).join("") || '<p class="hint">ยังไม่มีเส้นทาง</p>';
   rsvg.innerHTML = rs.map((r, i) => `<polyline points="${r.pts.map(p => p.join(",")).join(" ")}" class="${i === drawing ? "cur" : ""}"/>` + r.pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === drawing ? 0.9 : 0.6}" class="${i === drawing ? "cur" : ""}"/>`).join("")).join("");
   $("rAdd").hidden = drawing >= 0; $("rDone").hidden = $("rUndo").hidden = drawing < 0; $("rType").disabled = drawing >= 0;
@@ -447,7 +449,7 @@ function renderRoutes() {
   stage.classList.toggle("drawing", drawing >= 0);
   if (drawing < 0) life.set(draft.anim);
 }
-$("rAdd").onclick = () => { draft.anim.routes.push({ type: $("rType").value, n: 2, pts: [] }); drawing = draft.anim.routes.length - 1; renderRoutes(); stage.scrollIntoView({ block: "nearest", behavior: "smooth" }); };
+$("rAdd").onclick = () => { draft.anim.routes.push({ type: $("rType").value, n: 2, sp: 1, sz: 1, pts: [] }); drawing = draft.anim.routes.length - 1; renderRoutes(); stage.scrollIntoView({ block: "nearest", behavior: "smooth" }); };
 $("rUndo").onclick = () => { if (drawing >= 0) { draft.anim.routes[drawing].pts.pop(); renderRoutes(); } };
 $("rDone").onclick = () => {
   const r = draft.anim.routes[drawing];
@@ -455,7 +457,14 @@ $("rDone").onclick = () => {
   else setDirty(true);
   drawing = -1; renderRoutes();
 };
-$("routeRows").addEventListener("change", e => { const i = e.target.dataset.rn; if (i === undefined) return; draft.anim.routes[+i].n = +e.target.value; setDirty(true); life.set(draft.anim); });
+$("routeRows").addEventListener("change", e => {
+  const d = e.target.dataset;
+  if (d.rn !== undefined) draft.anim.routes[+d.rn].n = +e.target.value;
+  else if (d.rs !== undefined) draft.anim.routes[+d.rs].sp = +e.target.value;
+  else if (d.rz !== undefined) draft.anim.routes[+d.rz].sz = +e.target.value;
+  else return;
+  setDirty(true); life.set(draft.anim);
+});
 $("routeRows").addEventListener("click", e => { const i = e.target.dataset.rdel; if (i === undefined) return; draft.anim.routes.splice(+i, 1); if (drawing === +i) drawing = -1; else if (drawing > +i) drawing--; setDirty(true); renderRoutes(); });
 
 /* ---------- บันทึก ---------- */

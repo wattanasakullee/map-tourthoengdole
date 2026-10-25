@@ -134,6 +134,8 @@ label small{font-weight:400;color:var(--muted)}
 .pinrow{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--bg)}
 .pinrow.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .pinrow .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+#routeRows .pinrow{flex-wrap:wrap}
+#routeRows .pinrow .t{flex:1 1 180px}
 .pinrow button{padding:4px 10px}
 .tablewrap{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:.95rem}
