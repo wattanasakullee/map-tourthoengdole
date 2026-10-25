@@ -330,7 +330,7 @@ function renderEditor() {
   const hasImg = !!(draft.newImage || draft.image);
   stage.hidden = !hasImg; $("noImg").hidden = hasImg;
   $("lastBy").textContent = draft.updatedAt ? "บันทึกล่าสุด " + new Date(Number(draft.updatedAt)).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) + " โดย ครู" + (draft.updatedBy || "") : "";
-  if (!draft.anim) draft.anim = cleanAnim(DEFAULT_ANIM);
+  draft.anim = cleanAnim(draft.anim || DEFAULT_ANIM); // แปลงจุดเส้นทางที่เก็บใน Firebase ให้พร้อมใช้
   renderAnim();
   renderPinsAll();
 }

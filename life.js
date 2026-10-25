@@ -19,6 +19,11 @@ const SIZES = [
 ];
 const DEFAULT_ANIM = { birds: true, butterflies: true, mist: true, balloons: false, routes: [] };
 
+/* Firebase เก็บรายการซ้อนรายการไม่ได้ จึงแปลงจุด [x,y] เป็น {x,y} ก่อนบันทึก */
+function animForStore(a) {
+  const c = cleanAnim(a);
+  return Object.assign({}, c, { routes: c.routes.map(r => Object.assign({}, r, { pts: r.pts.map(p => ({ x: p[0], y: p[1] })) })) });
+}
 function cleanAnim(a) {
   a = a || {};
   return {
@@ -28,7 +33,11 @@ function cleanAnim(a) {
       n: Math.max(1, Math.min(5, Math.round(+r.n || 1))),
       sp: Math.max(0.2, Math.min(3, +r.sp || 1)),
       sz: Math.max(0.3, Math.min(2, +r.sz || 1)),
-      pts: (Array.isArray(r.pts) ? r.pts : []).slice(0, 40).map(p => [Math.max(0, Math.min(100, +(+p[0]).toFixed(1) || 0)), Math.max(0, Math.min(100, +(+p[1]).toFixed(1) || 0))])
+      // รับได้ทั้งแบบ [x,y] (ใช้ในหน้าเว็บ) และ {x,y} (แบบที่เก็บใน Firebase)
+      pts: (Array.isArray(r.pts) ? r.pts : []).slice(0, 40).map(p => {
+        const x = Array.isArray(p) ? p[0] : p && p.x, y = Array.isArray(p) ? p[1] : p && p.y;
+        return [Math.max(0, Math.min(100, +(+x).toFixed(1) || 0)), Math.max(0, Math.min(100, +(+y).toFixed(1) || 0))];
+      })
     })).filter(r => r.pts.length >= 2)
   };
 }

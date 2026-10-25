@@ -138,7 +138,7 @@ export async function saveMap(m, baseUpdatedAt, by) {
       const now = Date.now();
       const data = { name: String(m.name || "").slice(0, 80), title: String(m.title || "").slice(0, 150), places, updatedAt: now, updatedBy: by,
         video: /^https?:\/\//i.test(m.video || "") ? String(m.video).slice(0, 500) : "",
-        anim: typeof cleanAnim === "function" ? cleanAnim(m.anim) : (m.anim || null) };
+        anim: typeof animForStore === "function" ? animForStore(m.anim) : null };
       if (m.newImage) { tx.set(doc(db, "mapImages", m.id), { data: m.newImage }); data.image = "firestore"; data.imageRev = now; data.thumb = m.newThumb || ""; }
       else data.image = String(m.image || "").slice(0, 500);
       tx.update(ref, data);
