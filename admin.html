@@ -84,7 +84,9 @@
         <div class="grid2">
           <label for="fName">ชื่อตำบล (แสดงบนปุ่มเลือก)<input id="fName"></label>
           <label for="fTitle">ชื่อแผนที่ (หัวเรื่องด้านบน)<input id="fTitle"></label>
+          <label for="fVideo" style="grid-column:1/-1">🎬 วิดีโอแนะนำตำบล <small>(ถ้ามี · ลิงก์ YouTube, Google Drive, Facebook หรือ TikTok)</small><input id="fVideo" placeholder="https://youtu.be/…"></label>
         </div>
+        <div id="fVideoPrev"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <label class="btn" for="fImg" style="flex-direction:row;font-weight:400;cursor:pointer">🖼 เปลี่ยนภาพแผนที่<input type="file" id="fImg" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px"></label>
           <span class="hint" id="imgMsg">แตะที่ว่างบนภาพเพื่อเพิ่มหมุด · ลากหมุดสีแดงเพื่อย้าย · แตะหมุดเพื่อแก้ข้อความ</span>
@@ -94,11 +96,33 @@
         </div>
         <div class="msg" id="noImg" hidden>ยังไม่มีภาพแผนที่ กด "เปลี่ยนภาพแผนที่" เพื่ออัปโหลด</div>
 
+        <div class="panel" id="animPanel" style="border-style:dashed">
+          <h3>✨ ภาพเคลื่อนไหวบนแผนที่</h3>
+          <fieldset class="mapchecks"><legend>สิ่งที่เคลื่อนไหวเอง (ไม่ต้องวาด)</legend>
+            <label class="chk"><input type="checkbox" id="aBirds"> 🐦 ฝูงนกบินผ่าน</label>
+            <label class="chk"><input type="checkbox" id="aButter"> 🦋 ผีเสื้อบิน</label>
+            <label class="chk"><input type="checkbox" id="aMist"> 🌫 หมอกลอย</label>
+            <label class="chk"><input type="checkbox" id="aBalloon"> 🎈 บอลลูนลอย</label>
+          </fieldset>
+          <h3 style="font-size:1rem">🚙 รถและคนเดินตามเส้นทาง</h3>
+          <p class="hint" id="routeHint">เลือกประเภท แล้วกด "+ วาดเส้นทาง" จากนั้นแตะบนภาพไล่ตามแนวถนนทีละจุด (อย่างน้อย 2 จุด) แล้วกด "✔ เสร็จ" รถหรือคนจะวิ่งไปกลับตามเส้นนั้น</p>
+          <div class="pinrows" id="routeRows"></div>
+          <div class="bar" style="justify-content:flex-start">
+            <label for="rType" style="flex-direction:row;align-items:center;gap:6px">ประเภท<select id="rType" style="width:auto"></select></label>
+            <button type="button" id="rAdd">+ วาดเส้นทาง</button>
+            <button type="button" id="rUndo" hidden>↶ ลบจุดล่าสุด</button>
+            <button type="button" id="rDone" class="primary" hidden>✔ เสร็จ</button>
+          </div>
+        </div>
+
         <div class="panel" id="pinForm" hidden style="border-style:dashed">
           <h3 id="pinHead">หมุด</h3>
           <label for="pTitle">ชื่อสถานที่<input id="pTitle"></label>
           <label for="pText">คำอธิบาย <small>(ข้อความนี้จะถูกอ่านออกเสียง)</small><textarea id="pText"></textarea></label>
           <label for="pLink">ลิงก์ Google Maps หรือเว็บไซต์ <small>(ถ้ามี)</small><input id="pLink" placeholder="https://"></label>
+          <label for="pVideo">🎬 วิดีโอของสถานที่นี้ <small>(ถ้ามี · ลิงก์ YouTube, Google Drive, Facebook หรือ TikTok)</small><input id="pVideo" placeholder="https://youtu.be/…"></label>
+          <p class="hint">วิธีเพิ่มวิดีโอ: อัปโหลดวิดีโอขึ้น YouTube (ตั้งเป็น "ไม่เป็นสาธารณะ" ก็ได้) หรือ Google Drive (แชร์แบบ "ทุกคนที่มีลิงก์") แล้วคัดลอกลิงก์มาวาง</p>
+          <div id="pVideoPrev"></div>
           <div class="bar" style="justify-content:flex-start">
             <button type="button" id="pTest">🔊 ทดลองฟัง</button>
             <button type="button" id="pDel" class="danger">🗑 ลบหมุดนี้</button>
@@ -162,6 +186,7 @@
 
 <script src="firebase-config.js"></script>
 <script src="common.js"></script>
+<script src="life.js"></script>
 <script type="module">
 import * as F from "./db.js";
 
@@ -293,6 +318,8 @@ function renderEditor() {
   if (!has) return;
   if (document.activeElement !== $("fName")) $("fName").value = draft.name || "";
   if (document.activeElement !== $("fTitle")) $("fTitle").value = draft.title || "";
+  if (document.activeElement !== $("fVideo")) $("fVideo").value = draft.video || "";
+  showVideoPrev("fVideoPrev", draft.video, draft.name);
   const img = $("mapImg");
   const key = draft.newImage ? "new:" + draft.newImage.length : draft.id + ":" + draft.image + ":" + (draft.imageRev || 0);
   if (img.dataset.key !== key) {
@@ -303,6 +330,8 @@ function renderEditor() {
   const hasImg = !!(draft.newImage || draft.image);
   stage.hidden = !hasImg; $("noImg").hidden = hasImg;
   $("lastBy").textContent = draft.updatedAt ? "บันทึกล่าสุด " + new Date(Number(draft.updatedAt)).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) + " โดย ครู" + (draft.updatedBy || "") : "";
+  if (!draft.anim) draft.anim = cleanAnim(DEFAULT_ANIM);
+  renderAnim();
   renderPinsAll();
 }
 function renderPinsAll() {
@@ -321,6 +350,8 @@ function renderPinsAll() {
     if (document.activeElement !== $("pTitle")) $("pTitle").value = f.title;
     if (document.activeElement !== $("pText")) $("pText").value = f.text;
     if (document.activeElement !== $("pLink")) $("pLink").value = f.link || "";
+    if (document.activeElement !== $("pVideo")) $("pVideo").value = f.video || "";
+    showVideoPrev("pVideoPrev", f.video, f.title);
   }
 }
 function select(i) { sel = i; renderPinsAll(); }
@@ -349,6 +380,10 @@ stage.addEventListener("pointerup", () => {
 stage.addEventListener("click", e => {
   if (e.target.id !== "mapImg" || moved) return;
   const r = e.target.getBoundingClientRect();
+  if (drawing >= 0) { // กำลังวาดเส้นทาง: เพิ่มจุดแทนการเพิ่มหมุด
+    draft.anim.routes[drawing].pts.push([+((e.clientX - r.left) / r.width * 100).toFixed(1), +((e.clientY - r.top) / r.height * 100).toFixed(1)]);
+    setDirty(true); renderRoutes(); return;
+  }
   draft.places.push({ x: +((e.clientX - r.left) / r.width * 100).toFixed(1), y: +((e.clientY - r.top) / r.height * 100).toFixed(1), title: "สถานที่ใหม่", text: "", link: "" });
   setDirty(true); select(draft.places.length - 1);
   $("pTitle").focus(); $("pTitle").select();
@@ -361,6 +396,15 @@ $("pinRows").addEventListener("click", e => {
   [draft.places[i], draft.places[j]] = [draft.places[j], draft.places[i]];
   setDirty(true); select(j);
 });
+function showVideoPrev(id, url, title) {
+  const box = $(id); if (box.dataset.url === (url || "")) return;
+  box.dataset.url = url || "";
+  const v = videoEmbed(url);
+  box.innerHTML = !url ? "" : !v ? '<p class="hint err">ลิงก์วิดีโอต้องขึ้นต้นด้วย https://</p>'
+    : (v.type === "link" ? '<p class="hint">ลิงก์นี้ฝังวิดีโอในหน้าไม่ได้ ผู้ชมจะเห็นเป็นปุ่ม "เปิดวิดีโอในแท็บใหม่"</p>' : '<p class="hint">ตัวอย่างที่ผู้ชมจะเห็น:</p>') + videoHTML(url, title);
+}
+$("pVideo").addEventListener("input", () => { if (sel < 0) return; draft.places[sel].video = $("pVideo").value.trim(); setDirty(true); clearTimeout(window.__vt); window.__vt = setTimeout(() => showVideoPrev("pVideoPrev", draft.places[sel] && draft.places[sel].video, ""), 600); });
+$("fVideo").addEventListener("input", () => { draft.video = $("fVideo").value.trim(); setDirty(true); clearTimeout(window.__vt2); window.__vt2 = setTimeout(() => showVideoPrev("fVideoPrev", draft.video, draft.name), 600); });
 [["pTitle", "title"], ["pText", "text"], ["pLink", "link"]].forEach(([id, k]) => $(id).addEventListener("input", () => {
   if (sel < 0) return; draft.places[sel][k] = $(id).value; setDirty(true);
   const t = $("pinRows").querySelector(`[data-sel="${sel}"]`); if (t && k === "title") t.textContent = $(id).value || "(ไม่มีชื่อ)";
@@ -375,6 +419,44 @@ $("fImg").addEventListener("change", async e => {
   try { draft.newImage = await F.compressImage(f); draft.newThumb = await F.makeThumb(draft.newImage); setDirty(true); renderEditor(); $("imgMsg").textContent = "เปลี่ยนภาพแล้ว กดบันทึกเพื่อให้ผู้ชมเห็น"; }
   catch (err) { $("imgMsg").textContent = err.message; }
 });
+
+/* ---------- ภาพเคลื่อนไหว: นก ผีเสื้อ หมอก บอลลูน และเส้นทางรถ/คนเดิน ---------- */
+const life = new MapLife(stage, $("mapImg"));
+let drawing = -1;
+const svgNS = "http://www.w3.org/2000/svg";
+const rsvg = document.createElementNS(svgNS, "svg");
+rsvg.setAttribute("class", "routesvg"); rsvg.setAttribute("viewBox", "0 0 100 100"); rsvg.setAttribute("preserveAspectRatio", "none"); rsvg.setAttribute("aria-hidden", "true");
+stage.appendChild(rsvg);
+$("rType").innerHTML = Object.entries(ROUTE_TYPES).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join("");
+const ANIM_BOX = { aBirds: "birds", aButter: "butterflies", aMist: "mist", aBalloon: "balloons" };
+Object.entries(ANIM_BOX).forEach(([id, k]) => $(id).addEventListener("change", () => { draft.anim[k] = $(id).checked; setDirty(true); life.set(draft.anim); }));
+function renderAnim() {
+  Object.entries(ANIM_BOX).forEach(([id, k]) => $(id).checked = !!draft.anim[k]);
+  drawing = -1; renderRoutes();
+}
+function renderRoutes() {
+  const rs = draft.anim.routes;
+  $("routeRows").innerHTML = rs.map((r, i) => `<div class="pinrow${i === drawing ? " sel" : ""}">
+      <span class="t">${ROUTE_TYPES[r.type].icon} ${ROUTE_TYPES[r.type].label} · ${r.pts.length} จุด${i === drawing ? " (กำลังวาด)" : ""}</span>
+      <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">จำนวน<select data-rn="${i}" style="width:auto">${[1, 2, 3, 4, 5].map(n => `<option ${n === r.n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <button type="button" class="danger" data-rdel="${i}">ลบ</button></div>`).join("") || '<p class="hint">ยังไม่มีเส้นทาง</p>';
+  rsvg.innerHTML = rs.map((r, i) => `<polyline points="${r.pts.map(p => p.join(",")).join(" ")}" class="${i === drawing ? "cur" : ""}"/>` + r.pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === drawing ? 0.9 : 0.6}" class="${i === drawing ? "cur" : ""}"/>`).join("")).join("");
+  $("rAdd").hidden = drawing >= 0; $("rDone").hidden = $("rUndo").hidden = drawing < 0; $("rType").disabled = drawing >= 0;
+  $("routeHint").classList.toggle("err", drawing >= 0);
+  $("routeHint").textContent = drawing >= 0 ? "กำลังวาดเส้นทาง: แตะบนภาพไล่ตามแนวถนนทีละจุด แล้วกด ✔ เสร็จ (ระหว่างนี้แตะภาพจะไม่เพิ่มหมุด)" : "เลือกประเภท แล้วกด \"+ วาดเส้นทาง\" จากนั้นแตะบนภาพไล่ตามแนวถนนทีละจุด (อย่างน้อย 2 จุด) แล้วกด \"✔ เสร็จ\" รถหรือคนจะวิ่งไปกลับตามเส้นนั้น";
+  stage.classList.toggle("drawing", drawing >= 0);
+  if (drawing < 0) life.set(draft.anim);
+}
+$("rAdd").onclick = () => { draft.anim.routes.push({ type: $("rType").value, n: 2, pts: [] }); drawing = draft.anim.routes.length - 1; renderRoutes(); stage.scrollIntoView({ block: "nearest", behavior: "smooth" }); };
+$("rUndo").onclick = () => { if (drawing >= 0) { draft.anim.routes[drawing].pts.pop(); renderRoutes(); } };
+$("rDone").onclick = () => {
+  const r = draft.anim.routes[drawing];
+  if (r && r.pts.length < 2) { draft.anim.routes.splice(drawing, 1); toast("เส้นทางต้องมีอย่างน้อย 2 จุด จึงยังไม่ได้เพิ่ม"); }
+  else setDirty(true);
+  drawing = -1; renderRoutes();
+};
+$("routeRows").addEventListener("change", e => { const i = e.target.dataset.rn; if (i === undefined) return; draft.anim.routes[+i].n = +e.target.value; setDirty(true); life.set(draft.anim); });
+$("routeRows").addEventListener("click", e => { const i = e.target.dataset.rdel; if (i === undefined) return; draft.anim.routes.splice(+i, 1); if (drawing === +i) drawing = -1; else if (drawing > +i) drawing--; setDirty(true); renderRoutes(); });
 
 /* ---------- บันทึก ---------- */
 $("save").onclick = async () => {

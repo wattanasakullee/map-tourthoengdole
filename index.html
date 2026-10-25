@@ -36,10 +36,15 @@
     <button type="button" id="stopBtn">⏹ หยุดเสียง</button>
     <button type="button" id="tourBtn">▶ เล่นทุกจุดตามลำดับ</button>
     <button type="button" id="setBtn" aria-expanded="false">⚙ ตั้งค่าเสียง</button>
+    <button type="button" id="lifeBtn">✨ ภาพเคลื่อนไหว: เปิด</button>
   </div>
   <div class="voicebox" id="voiceBox" hidden></div>
   <p class="note" id="voiceNote"></p>
 
+  <details class="introvid" id="introVid" hidden>
+    <summary>🎬 ดูวิดีโอแนะนำตำบล</summary>
+    <div id="introBody"></div>
+  </details>
   <div class="msg" id="noImg" hidden>ตำบลนี้ยังไม่มีภาพแผนที่ ครูกำลังจัดทำ</div>
   <div class="stage" id="stage">
     <img class="map" id="mapImg" alt="" draggable="false">
@@ -55,6 +60,7 @@
 
 <script src="firebase-config.js"></script>
 <script src="common.js"></script>
+<script src="life.js"></script>
 <script type="module">
 import { configured, watchMaps, imageSrc } from "./db.js";
 let maps = [], cur = null, active = -1, version = null, touched = false, touring = false;
@@ -105,6 +111,9 @@ function selectMap(id, keepCard) {
   stage.hidden = !cur.image; $("noImg").hidden = !!cur.image;
   $("subTitle").textContent = "ชี้เมาส์หรือแตะที่หมุดตัวเลข เพื่ออ่านและฟังข้อมูลแต่ละสถานที่";
   $("mapTitle").textContent = cur.title || cur.name;
+  const iv = $("introVid");
+  if (iv.dataset.url !== (cur.video || "")) { iv.dataset.url = cur.video || ""; iv.open = false; $("introBody").innerHTML = ""; }
+  iv.hidden = !cur.video;
   document.title = cur.title || "แผนที่แหล่งเรียนรู้";
   const img = $("mapImg");
   img.alt = "ภาพแผนที่ " + (cur.name || "");
@@ -113,6 +122,7 @@ function selectMap(id, keepCard) {
   if (!same || !keepCard) { active = -1; stopTour(); Voice.stop(); }
   if (active >= cur.places.length) active = -1;
   renderPins(stage, cur.places, active);
+  life.set(cur.anim);
   $("list").innerHTML = cur.places.map((p, i) => `<button type="button" data-i="${i}"><span class="n">${i + 1}</span>${esc(p.title)}</button>`).join("");
   if (active >= 0) showCard(active, false); else placeCard(stage, slot, null, -1);
   if (pendingScroll) { pendingScroll = false; scrollToMap(); }
@@ -138,6 +148,13 @@ function onMaps(list, err) {
 }
 
 /* เหตุการณ์ */
+/* ภาพเคลื่อนไหวบนแผนที่ (เปิด/ปิดได้ เครื่องจะจำไว้) */
+const life = new MapLife(stage, $("mapImg"));
+function setLifeBtn() { $("lifeBtn").textContent = "✨ ภาพเคลื่อนไหว: " + (life.on ? "เปิด" : "ปิด"); $("lifeBtn").classList.toggle("on", life.on); $("lifeBtn").setAttribute("aria-pressed", life.on); }
+life.setOn(store.get("life_on", true)); setLifeBtn();
+$("lifeBtn").onclick = () => { life.setOn(!life.on); store.set("life_on", life.on); setLifeBtn(); };
+/* โหลดวิดีโอแนะนำเมื่อกดเปิดเท่านั้น หน้าเว็บจะได้ไม่ช้า */
+$("introVid").addEventListener("toggle", () => { const iv = $("introVid"); if (iv.open && !$("introBody").innerHTML && cur) $("introBody").innerHTML = videoHTML(cur.video, "วิดีโอแนะนำ" + cur.name); });
 /* เลือกตำบลแล้ว เลื่อนหน้าลงไปที่ภาพแผนที่ของตำบลนั้น */
 let pendingScroll = false;
 function goMap(id) {

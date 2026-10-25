@@ -66,6 +66,25 @@ label small{font-weight:400;color:var(--muted)}
 .viewer .stage img.map{width:auto;max-width:100%;max-height:68vh}
 .viewer #cardSlot:empty{display:none}
 
+/* วิดีโอ */
+.vbox{display:flex;flex-direction:column;gap:6px;margin:4px 0}
+.vframe{position:relative;width:100%;aspect-ratio:16/9;max-width:min(100%,640px);margin-inline:auto;border-radius:12px;overflow:hidden;background:#000}
+.vframe.vertical{aspect-ratio:9/16;max-width:340px;margin-inline:auto}
+.vframe iframe,.vframe video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vlink{font-size:.9rem;color:var(--accent);font-weight:600;text-align:center}
+.introvid{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.introvid summary{cursor:pointer;font-family:var(--display);font-weight:700;color:var(--accent);font-size:1.05rem}
+.introvid[open] summary{margin-bottom:10px}
+
+/* ภาพเคลื่อนไหวบนแผนที่ */
+.lifecv{position:absolute;left:0;top:0;pointer-events:none;z-index:1;border-radius:16px}
+.routesvg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+.routesvg polyline{fill:none;stroke:#ff5a36;stroke-width:3;stroke-dasharray:6 5;vector-effect:non-scaling-stroke;opacity:.85}
+.routesvg polyline.cur{stroke:#ffd23f;stroke-width:4}
+.routesvg circle{fill:#fff;stroke:#ff5a36;stroke-width:2;vector-effect:non-scaling-stroke}
+.routesvg circle.cur{stroke:#e0a100}
+.stage.drawing img.map{cursor:copy;outline:3px dashed #ffd23f;outline-offset:-3px}
+
 /* map stage */
 .stage{position:relative;width:100%;user-select:none;-webkit-user-select:none}
 .stage img.map{display:block;width:100%;height:auto;border-radius:16px;-webkit-user-drag:none;background:var(--surface);min-height:120px}
