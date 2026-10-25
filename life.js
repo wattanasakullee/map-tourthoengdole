@@ -7,7 +7,12 @@ const ROUTE_TYPES = {
   bike:  { label: "จักรยาน",      icon: "🚲", speed: 0.035, size: 0.028 },
   walk:  { label: "คนเดิน",       icon: "🚶", speed: 0.016, size: 0.028 },
   hike:  { label: "นักท่องเที่ยวหญิง", icon: "🚶‍♀️", speed: 0.016, size: 0.028 },
-  boat:  { label: "เรือ",         icon: "🛶", speed: 0.022, size: 0.036 }
+  boat:  { label: "เรือ",         icon: "🛶", speed: 0.022, size: 0.036 },
+  monk:  { label: "พระสงฆ์",      icon: "🙏", speed: 0.012, size: 0.028 },
+  tribe: { label: "คนชนเผ่า",     icon: "👒", speed: 0.014, size: 0.028 },
+  // ประเภท "วางอยู่กับที่": แตะบนภาพ 1 ครั้ง = 1 ต้น ยอดไหวตามลม
+  tree:  { label: "ต้นไม้ (ยอดไหว)",     icon: "🌳", fixed: true, speed: 1, size: 0.075 },
+  palm:  { label: "ต้นมะพร้าว (ยอดไหว)", icon: "🌴", fixed: true, speed: 1, size: 0.095 }
 };
 // ความเร็ว (คูณกับความเร็วปกติของแต่ละประเภท)
 const SPEEDS = [
@@ -38,7 +43,7 @@ function cleanAnim(a) {
         const x = Array.isArray(p) ? p[0] : p && p.x, y = Array.isArray(p) ? p[1] : p && p.y;
         return [Math.max(0, Math.min(100, +(+x).toFixed(1) || 0)), Math.max(0, Math.min(100, +(+y).toFixed(1) || 0))];
       })
-    })).filter(r => r.pts.length >= 2)
+    })).filter(r => r.pts.length >= (ROUTE_TYPES[r.type].fixed ? 1 : 2))
   };
 }
 
@@ -79,8 +84,12 @@ class MapLife {
     this.mist = c.mist ? Array.from({ length: 5 }, (_, i) => ({ x: this.rnd(0, 1), y: this.rnd(.15, .6), r: this.rnd(.10, .18), sp: this.rnd(.004, .010) * (i % 2 ? 1 : -1), a: this.rnd(.18, .32) })) : [];
     this.balloons = c.balloons ? Array.from({ length: 3 }, (_, i) => ({ x: .15 + i * .3 + this.rnd(-.05, .05), y: this.rnd(.15, .45), ph: this.rnd(0, 6.28), hue: [8, 200, 45][i] })) : [];
     this.flock = null; this.nextFlock = performance.now() + 1500;
-    this.movers = [];
+    this.movers = []; this.statics = [];
     c.routes.forEach(r => {
+      if (ROUTE_TYPES[r.type].fixed) { // ต้นไม้: วางตามจุดที่แตะ
+        r.pts.forEach(p => this.statics.push({ r, px: p[0] / 100, py: p[1] / 100, ph: this.rnd(0, 6.28), hue: this.rnd(-10, 10), seed: Math.floor(Math.random() * 1e9) }));
+        return;
+      }
       const pts = r.pts.map(p => [p[0] / 100, p[1] / 100]);
       const seg = []; let len = 0;
       for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(l); len += l; }
@@ -124,32 +133,158 @@ class MapLife {
     const hip = -h * .47, sh = -h * .78, legL = h * .47, lw = Math.max(1.6, h * .085);
     const limb = (x0, y0, len, ang, col, w) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round"; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + Math.sin(ang) * len, y0 + Math.cos(ang) * len); c.stroke(); return [x0 + Math.sin(ang) * len, y0 + Math.cos(ang) * len]; };
     // ขาหลัง แขนหลัง (เข้มกว่า)
-    const back = this.shade(m.pants, -.25), front = m.pants;
+    const robe = o.robe, tribe = o.tribe;
+    const pants = robe ? "#6b3a12" : tribe ? "#1c1c22" : m.pants;
+    const back = this.shade(pants, -.25), front = pants;
     if (!o.seated) {
       const f1 = limb(0, hip, legL, -step * .45, back, lw); c.fillStyle = "#222"; this.rr(f1[0] - lw * .3, f1[1] - lw * .45, lw * 1.5, lw * .9, lw * .3); c.fill();
     }
     limb(0, sh + h * .03, h * .3, step * .55, this.shade(m.skin, -.15), lw * .8);
     // ลำตัว
-    const g = c.createLinearGradient(-h * .1, 0, h * .12, 0); g.addColorStop(0, this.shade(m.shirt, .15)); g.addColorStop(1, this.shade(m.shirt, -.2));
+    const shirt = robe ? "#e0791a" : tribe ? "#1f1f26" : m.shirt;
+    const g = c.createLinearGradient(-h * .1, 0, h * .12, 0); g.addColorStop(0, this.shade(shirt, .15)); g.addColorStop(1, this.shade(shirt, -.2));
     c.fillStyle = g; this.rr(-h * .11, sh - h * .02, h * .22, h * .36, h * .07); c.fill();
+    if (tribe) { // เสื้อปักลายหลากสีแบบชนเผ่า
+      ["#d8343a", "#f2c14e", "#2f9fd8", "#3fae5b"].forEach((col, k) => { c.fillStyle = col; c.fillRect(-h * .11, sh + h * (.2 + k * .035), h * .22, h * .022); });
+      c.fillStyle = "#1c1c22"; this.rr(-h * .12, hip - h * .02, h * .24, h * .14, h * .03); c.fill();
+      ["#d8343a", "#f2c14e"].forEach((col, k) => { c.fillStyle = col; c.fillRect(-h * .12, hip + h * (.07 + k * .025), h * .24, h * .018); });
+    }
     if (o.backpack) { c.fillStyle = "#6b4f2a"; this.rr(-h * .2, sh + h * .02, h * .1, h * .22, h * .03); c.fill(); }
     // ขาหน้า
     if (!o.seated) {
       const f2 = limb(0, hip, legL, step * .45, front, lw); c.fillStyle = "#111"; this.rr(f2[0] - lw * .3, f2[1] - lw * .45, lw * 1.5, lw * .9, lw * .3); c.fill();
     } else if (!o.noLeg) { const k = limb(0, hip, h * .24, 1.45, front, lw); limb(k[0], k[1], h * .22, .25, front, lw); }
+    if (robe) { // จีวรห่มคลุมถึงข้อเท้า เปิดไหล่ขวา
+      const rg = c.createLinearGradient(-h * .16, 0, h * .16, 0); rg.addColorStop(0, "#f39a3a"); rg.addColorStop(1, "#c25f0e");
+      c.fillStyle = rg; c.beginPath(); c.moveTo(-h * .12, sh - h * .02); c.lineTo(h * .1, sh + h * .02); c.lineTo(h * .17 + step * h * .03, -h * .06); c.lineTo(-h * .17 + step * h * .03, -h * .06); c.closePath(); c.fill();
+      c.strokeStyle = "rgba(120,50,0,.45)"; c.lineWidth = Math.max(.6, h * .02); c.beginPath(); c.moveTo(-h * .1, sh); c.lineTo(h * .08, -h * .12); c.stroke();
+      c.fillStyle = m.skin; c.beginPath(); c.arc(h * .07, sh + h * .02, h * .045, 0, 6.283); c.fill();
+    }
     // แขนหน้า
-    limb(0, sh + h * .03, h * .3, o.arm != null ? o.arm : -step * .55, m.skin, lw * .8);
+    const hand = limb(0, sh + h * .03, h * .3, o.arm != null ? o.arm : (robe ? .9 : -step * .55), m.skin, lw * .8);
+    if (robe) { c.fillStyle = "#2a2622"; c.beginPath(); c.ellipse(hand[0] + h * .03, hand[1], h * .07, h * .05, 0, 0, 6.283); c.fill(); } // บาตร
     // ศีรษะ
     const hy = sh - h * .13, hr = h * .105;
     const fg = c.createRadialGradient(hr * .3, hy - hr * .3, hr * .1, 0, hy, hr * 1.1); fg.addColorStop(0, this.shade(m.skin, .15)); fg.addColorStop(1, this.shade(m.skin, -.12));
     c.fillStyle = fg; c.beginPath(); c.arc(0, hy, hr, 0, 6.283); c.fill();
-    if (o.helmet) {
+    if (robe) { // ศีรษะโกน
+      c.fillStyle = "rgba(60,40,30,.25)"; c.beginPath(); c.arc(0, hy - hr * .15, hr * .98, Math.PI * 1.05, Math.PI * 1.95); c.fill();
+    } else if (tribe) { // หมวกชนเผ่าประดับเหรียญเงินและพู่สี
+      c.fillStyle = "#1c1c22"; c.beginPath(); c.moveTo(-hr * 1.15, hy - hr * .2); c.quadraticCurveTo(-hr * 1.1, hy - hr * 2.3, 0, hy - hr * 2.4); c.quadraticCurveTo(hr * 1.1, hy - hr * 2.3, hr * 1.15, hy - hr * .2); c.closePath(); c.fill();
+      for (let k = 0; k < 5; k++) { c.fillStyle = "#e6e8ea"; c.beginPath(); c.arc(-hr * .8 + k * hr * .4, hy - hr * .55, hr * .17, 0, 6.283); c.fill(); }
+      for (let k = 0; k < 3; k++) { c.fillStyle = "#e9e9ec"; c.beginPath(); c.arc(-hr * .45 + k * hr * .45, hy - hr * 1.3, hr * .15, 0, 6.283); c.fill(); }
+      ["#d8343a", "#f2c14e", "#3fae5b"].forEach((col, k) => { const sw = Math.sin(t * 6 + m.ph + k) * hr * .15; c.fillStyle = col; c.beginPath(); c.arc(-hr * 1.15 + sw, hy + hr * (.2 + k * .35), hr * .2, 0, 6.283); c.fill(); });
+    } else if (o.helmet) {
       const hg = c.createRadialGradient(hr * .2, hy - hr * .6, hr * .1, 0, hy - hr * .1, hr * 1.35); hg.addColorStop(0, this.shade(m.helmet, .5)); hg.addColorStop(1, this.shade(m.helmet, -.25));
       c.fillStyle = hg; c.beginPath(); c.arc(0, hy - hr * .1, hr * 1.25, Math.PI * .95, Math.PI * 2.15); c.fill();
       c.fillStyle = "rgba(40,60,80,.75)"; c.beginPath(); c.ellipse(hr * .75, hy + hr * .05, hr * .45, hr * .35, 0, 0, 6.283); c.fill();
     } else {
       c.fillStyle = m.hair; c.beginPath(); c.arc(-hr * .08, hy - hr * .15, hr * 1.02, Math.PI * .9, Math.PI * 2.05); c.fill();
       if (o.hat || m.hat && o.hatOk) { c.fillStyle = "#e9dcc0"; c.beginPath(); c.ellipse(0, hy - hr * .75, hr * 1.7, hr * .35, 0, 0, 6.283); c.fill(); this.rr(-hr * .8, hy - hr * 1.5, hr * 1.6, hr * .8, hr * .3); c.fill(); }
+    }
+  }
+  /* สร้างภาพต้นไม้แบบละเอียดเก็บไว้ (ใบเล็ก ๆ หลายร้อยใบ มีแสงและเงา) */
+  treeImage(size, st) {
+    const S = Math.max(12, Math.round(size)), key = st.seed + ":" + S;
+    this.treeCache = this.treeCache || new Map();
+    if (this.treeCache.has(key)) return this.treeCache.get(key);
+    let x = st.seed >>> 0; const R = () => { x = (x + 0x6D2B79F5) >>> 0; let t = Math.imul(x ^ (x >>> 15), 1 | x); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const d = Math.min(2, devicePixelRatio || 1), W = S * 1.3, ox = W / 2;
+    const baseY = S * .3, trunkH = S * .34, crownH = S * .92;
+    const mk = (w, h) => { const cv = document.createElement("canvas"); cv.width = Math.ceil(w * d); cv.height = Math.ceil(h * d); const c = cv.getContext("2d"); c.scale(d, d); return [cv, c]; };
+    // ลำต้น
+    const [tc, t] = mk(W, trunkH);
+    t.translate(ox, trunkH);
+    const lean = (R() - .5) * S * .05;
+    let g = t.createLinearGradient(-S * .05, 0, S * .05, 0); g.addColorStop(0, "#8a6845"); g.addColorStop(.45, "#5e4329"); g.addColorStop(1, "#33231a");
+    t.fillStyle = g; t.beginPath(); t.moveTo(-S * .075, 0); t.quadraticCurveTo(-S * .04, -S * .05, -S * .035 + lean * .5, -S * .2); t.lineTo(-S * .025 + lean, -trunkH);
+    t.lineTo(S * .025 + lean, -trunkH); t.lineTo(S * .035 + lean * .5, -S * .2); t.quadraticCurveTo(S * .04, -S * .05, S * .08, 0); t.closePath(); t.fill();
+    t.strokeStyle = "rgba(30,20,12,.45)"; t.lineWidth = Math.max(.5, S * .006);
+    for (let k = 0; k < 7; k++) { const xx = (R() - .5) * S * .06, y0 = -R() * trunkH * .9; t.beginPath(); t.moveTo(xx, y0); t.lineTo(xx + (R() - .5) * S * .01, y0 - S * (.04 + R() * .06)); t.stroke(); }
+    // พุ่มใบ
+    const [cc, c] = mk(W, crownH);
+    c.translate(ox + lean, crownH);
+    const cy = -crownH * .5, rx = S * (.46 + R() * .1), ry = S * (.34 + R() * .06);
+    // กิ่งที่มองเห็นผ่านช่องใบ
+    c.strokeStyle = "#4a3422"; c.lineCap = "round";
+    for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + (k - 2.5) * .42 + (R() - .5) * .3; c.lineWidth = Math.max(.8, S * (.024 - k * .002)); c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(Math.cos(a) * rx * .2, cy * .45, Math.cos(a) * rx * .5, cy + Math.sin(a) * ry * .35); c.stroke(); }
+    // กลุ่มพุ่มย่อย
+    const lumps = []; const n = 7 + Math.floor(R() * 4);
+    for (let k = 0; k < n; k++) { const a = R() * 6.283, r = .35 + R() * .4; lumps.push([Math.cos(a) * rx * r * .85, cy + Math.sin(a) * ry * r * .8, S * (.15 + R() * .1)]); }
+    lumps.push([0, cy, S * .24]); lumps.push([-rx * .25, cy - ry * .35, S * .17]); lumps.push([rx * .25, cy - ry * .3, S * .17]);
+    // มวลเงาด้านในพุ่ม (กันไม่ให้โปร่งจนเห็นพื้นหลัง)
+    for (const [lx, ly, lr0] of lumps) { const gg = c.createRadialGradient(lx, ly, 0, lx, ly, lr0 * .9); gg.addColorStop(0, `hsl(${100 + st.hue} 35% 15%)`); gg.addColorStop(1, `hsla(${100 + st.hue} 35% 15% / 0)`); c.fillStyle = gg; c.beginPath(); c.arc(lx, ly, lr0 * .9, 0, 6.283); c.fill(); }
+    const leaves = [];
+    const L = Math.min(2600, Math.round(S * S * 1.4));
+    for (let k = 0; k < L; k++) {
+      const lp = lumps[Math.floor(R() * lumps.length)], a = R() * 6.283, r = Math.sqrt(R()) * lp[2];
+      const lx = lp[0] + Math.cos(a) * r, ly = lp[1] + Math.sin(a) * r * .85;
+      const nx = (lx) / rx, ny = (ly - cy) / ry, inner = (lx - lp[0]) / lp[2] * -.55 + (ly - lp[1]) / lp[2] * -.75; // แสงจากซ้ายบน
+      const light = Math.max(0, Math.min(1, .45 + inner * .35 - ny * .25 - nx * .12 + (R() - .5) * .35));
+      leaves.push([lx, ly, light, R()]);
+    }
+    leaves.sort((p, q) => p[2] - q[2]);
+    const lr = Math.max(.8, S * .013);
+    for (const [lx, ly, light, rr] of leaves) {
+      const h = 82 + st.hue + light * 18 + rr * 10, sat = 26 + light * 20, lig = 11 + light * 33;
+      c.fillStyle = `hsl(${h} ${sat}% ${lig}%)`;
+      c.beginPath(); c.ellipse(lx, ly, lr * (1 + rr * .8), lr * (.55 + rr * .3), rr * 6.283, 0, 6.283); c.fill();
+    }
+    const out = { trunk: tc, crown: cc, d, ox, trunkH, crownH, baseY };
+    this.treeCache.set(key, out);
+    if (this.treeCache.size > 200) this.treeCache.clear();
+    return out;
+  }
+  /* ต้นไม้และต้นมะพร้าว: ลำต้นนิ่ง ยอดไหวตามลม (speed = ความแรงลม) */
+  plant(type, s, st, t, speed) {
+    const c = this.ctx, sway = Math.sin(t * 1.6 * speed + st.ph) * .07 * Math.min(1.6, speed) + Math.sin(t * 3.7 * speed + st.ph * 2) * .015;
+    if (type === "palm") {
+      const H = s, topX = sway * H * .9, topY = -H;
+      let g = c.createLinearGradient(-H * .05, 0, H * .05, 0); g.addColorStop(0, "#9a8a72"); g.addColorStop(.5, "#76664f"); g.addColorStop(1, "#4d4233");
+      c.strokeStyle = g; c.lineWidth = Math.max(2, H * .055); c.lineCap = "round";
+      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(H * .12 + topX * .3, -H * .55, topX, topY); c.stroke();
+      c.strokeStyle = "rgba(60,40,20,.5)"; c.lineWidth = Math.max(.6, H * .012);
+      for (let k = 1; k < 9; k++) { const f = k / 9, x = (1 - f) * (1 - f) * 0 + 2 * (1 - f) * f * (H * .12 + topX * .3) + f * f * topX, y = 2 * (1 - f) * f * (-H * .55) + f * f * topY; c.beginPath(); c.moveTo(x - H * .03, y); c.lineTo(x + H * .03, y + H * .01); c.stroke(); }
+      c.save(); c.translate(topX, topY);
+      // ใบแห้งสีน้ำตาลห้อยลงด้านล่าง
+      for (const side of [-1, 1]) {
+        c.strokeStyle = "#7a6338"; c.lineWidth = Math.max(1, H * .014);
+        c.beginPath(); c.moveTo(0, H * .02); c.quadraticCurveTo(side * H * .12, H * .05, side * H * .16 + sway * H * .2, H * .26); c.stroke();
+        c.lineWidth = Math.max(.5, H * .006);
+        for (let j = 1; j < 8; j++) { const f = j / 8, x = side * (H * .12 * 2 * (1 - f) * f + H * .16 * f * f), y = H * (.05 * 2 * (1 - f) * f + .26 * f * f) + H * .02 * (1 - f); c.beginPath(); c.moveTo(x, y); c.lineTo(x + side * H * .05, y + H * .05); c.stroke(); }
+      }
+      const fronds = 11;
+      for (let k = 0; k < fronds; k++) {
+        const fk = (k + .5) / fronds, a = -Math.PI + fk * Math.PI + (k % 2 ? .08 : -.05) + sway * 2.2 * (.6 + .4 * Math.sin(k * 1.7));
+        const len = H * (.34 + ((k * 37) % 7) * .012 + (1 - Math.abs(fk - .5) * 2) * .06);
+        const droop = .55 + Math.abs(Math.cos(a)) * .5;
+        const ex = Math.cos(a) * len * 1.05, ey = Math.sin(a) * len * .32 + len * droop * .9, cx = Math.cos(a) * len * .55, cy = Math.sin(a) * len * .55 - len * .08;
+        const tone = 26 + ((k * 13) % 5) * 4;
+        // ก้านใบ
+        c.strokeStyle = `hsl(78 35% ${tone - 6}%)`; c.lineWidth = Math.max(1, H * .012);
+        c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(cx, cy, ex, ey); c.stroke();
+        // ใบย่อยสองข้างก้าน ห้อยลง
+        for (let j = 2; j < 16; j++) {
+          const f = j / 16, x = 2 * (1 - f) * f * cx + f * f * ex, y = 2 * (1 - f) * f * cy + f * f * ey;
+          const tx = 2 * (1 - f) * (cx) + 2 * f * (ex - cx), ty = 2 * (1 - f) * (cy) + 2 * f * (ey - cy), tl = Math.hypot(tx, ty) || 1;
+          const nx = -ty / tl, ny = tx / tl, l = H * .1 * (1 - f * .55);
+          for (const sd of [-1, 1]) {
+            const lx = x + (nx * sd * .55 + tx / tl * .35) * l, ly = y + (ny * sd * .55 + .75) * l;
+            c.strokeStyle = `hsl(${80 + (j % 3) * 4} ${32 + (j % 2) * 8}% ${tone + (sd > 0 ? 8 : 0) + (j % 4)}%)`;
+            c.lineWidth = Math.max(.6, H * .009);
+            c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo((x + lx) / 2 + nx * sd * l * .1, (y + ly) / 2 - l * .1, lx, ly); c.stroke();
+          }
+        }
+      }
+      c.fillStyle = "#6b4a1f"; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc((k - 1.5) * H * .035, H * .04 + (k % 2) * H * .02, H * .03, 0, 6.283); c.fill(); }
+      c.restore();
+    } else {
+      // ต้นไม้แบบละเอียด: วาดไว้ล่วงหน้าครั้งเดียว แล้วโยกเฉพาะพุ่มใบตามลม
+      const img = this.treeImage(s, st);
+      c.drawImage(img.trunk, -img.ox, -img.trunkH, img.trunk.width / img.d, img.trunk.height / img.d);
+      c.save(); c.translate(0, -img.baseY); c.rotate(sway * .55); c.transform(1, 0, sway * .25, 1, 0, 0);
+      c.drawImage(img.crown, -img.ox, -img.crownH, img.crown.width / img.d, img.crown.height / img.d);
+      c.restore();
     }
   }
   sprite(type, s, m, t, speed) {
@@ -221,7 +356,7 @@ class MapLife {
       c.fillStyle = "#c0392b"; c.beginPath(); c.moveTo(-L * .26, -L * .3); c.lineTo(L * .26, -L * .3); c.lineTo(L * .2, -L * .36); c.lineTo(-L * .2, -L * .36); c.closePath(); c.fill();
       c.save(); c.translate(-L * .36, L * .12); this.person(m, L * .45, t, { still: true, seated: true, arm: .9 }); c.restore();
     } else {
-      this.person(m, s, t, { backpack: type === "hike", hatOk: type === "hike" });
+      this.person(m, s, t, { backpack: type === "hike", hatOk: type === "hike", robe: type === "monk", tribe: type === "tribe" });
     }
   }
   frame(now) {
@@ -256,9 +391,18 @@ class MapLife {
         const [px, py, dx, dy] = this.posOn(m, f * m.len);
         const vx = (forward ? dx : -dx) * W, vy = (forward ? dy : -dy) * H;
         return { m, ty, spd, px, py, vx, vy };
-      }).sort((a, b) => a.py - b.py); // วาดจากไกลไปใกล้
+      });
+      for (const st of this.statics) order.push({ st, ty: ROUTE_TYPES[st.r.type], spd: st.r.sp || 1, px: st.px, py: st.py });
+      order.sort((a, b) => a.py - b.py); // วาดจากไกลไปใกล้
       for (const o of order) {
-        const { m, ty, spd, px, py, vx, vy } = o, walker = m.r.type === "walk" || m.r.type === "hike";
+        if (o.st) { // ต้นไม้
+          const size = Math.max(10, W * o.ty.size * .8 * (o.st.r.sz || 1) * (.72 + o.py * .55));
+          ctx.save(); ctx.translate(o.px * W, o.py * H);
+          ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(size * .06, 0, size * .28, size * .06, 0, 0, 6.283); ctx.fill();
+          this.plant(o.st.r.type, size, o.st, t, o.spd);
+          ctx.restore(); continue;
+        }
+        const { m, ty, spd, px, py, vx, vy } = o, walker = ["walk", "hike", "monk", "tribe"].includes(m.r.type);
         const persp = .72 + py * .55, size = Math.max(6, W * ty.size * .7 * (m.r.sz || 1) * persp);
         const right = vx >= 0, ang = walker ? 0 : Math.max(-.42, Math.min(.42, Math.atan2(vy, Math.abs(vx) || .001)));
         const bob = walker ? Math.abs(Math.sin(t * 6.5 + m.ph)) * size * .03 : 0;

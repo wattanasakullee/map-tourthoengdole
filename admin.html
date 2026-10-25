@@ -436,24 +436,26 @@ function renderAnim() {
 }
 function renderRoutes() {
   const rs = draft.anim.routes;
-  $("routeRows").innerHTML = rs.map((r, i) => `<div class="pinrow${i === drawing ? " sel" : ""}">
-      <span class="t">${ROUTE_TYPES[r.type].icon} ${ROUTE_TYPES[r.type].label} · ${r.pts.length} จุด${i === drawing ? " (กำลังวาด)" : ""}</span>
-      <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">จำนวน<select data-rn="${i}" style="width:auto">${[1, 2, 3, 4, 5].map(n => `<option ${n === r.n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+  $("routeRows").innerHTML = rs.map((r, i) => { const fx = ROUTE_TYPES[r.type].fixed; return `<div class="pinrow${i === drawing ? " sel" : ""}">
+      <span class="t">${ROUTE_TYPES[r.type].icon} ${ROUTE_TYPES[r.type].label} · ${r.pts.length} ${fx ? "ต้น" : "จุด"}${i === drawing ? (fx ? " (กำลังวาง)" : " (กำลังวาด)") : ""}</span>
+      ${fx ? "" : `<label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">จำนวน<select data-rn="${i}" style="width:auto">${[1, 2, 3, 4, 5].map(n => `<option ${n === r.n ? "selected" : ""}>${n}</option>`).join("")}</select></label>`}
       <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">ขนาด<select data-rz="${i}" style="width:auto">${SIZES.map(o => `<option value="${o.v}" ${Math.abs(o.v - (r.sz || 1)) < .01 ? "selected" : ""}>${o.t}</option>`).join("")}</select></label>
-      <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">ความเร็ว<select data-rs="${i}" style="width:auto">${SPEEDS.map(o => `<option value="${o.v}" ${Math.abs(o.v - (r.sp || 1)) < .01 ? "selected" : ""}>${o.t}</option>`).join("")}</select></label>
-      <button type="button" class="danger" data-rdel="${i}">ลบ</button></div>`).join("") || '<p class="hint">ยังไม่มีเส้นทาง</p>';
-  rsvg.innerHTML = rs.map((r, i) => `<polyline points="${r.pts.map(p => p.join(",")).join(" ")}" class="${i === drawing ? "cur" : ""}"/>` + r.pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === drawing ? 0.9 : 0.6}" class="${i === drawing ? "cur" : ""}"/>`).join("")).join("");
+      <label style="flex-direction:row;align-items:center;gap:4px;font-weight:400">${fx ? "ความแรงลม" : "ความเร็ว"}<select data-rs="${i}" style="width:auto">${SPEEDS.map(o => `<option value="${o.v}" ${Math.abs(o.v - (r.sp || 1)) < .01 ? "selected" : ""}>${o.t}</option>`).join("")}</select></label>
+      <button type="button" class="danger" data-rdel="${i}">ลบ</button></div>`; }).join("") || '<p class="hint">ยังไม่มีเส้นทาง</p>';
+  rsvg.innerHTML = rs.map((r, i) => (ROUTE_TYPES[r.type].fixed ? "" : `<polyline points="${r.pts.map(p => p.join(",")).join(" ")}" class="${i === drawing ? "cur" : ""}"/>`) + r.pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === drawing ? 0.9 : 0.6}" class="${i === drawing ? "cur" : ""}"/>`).join("")).join("");
   $("rAdd").hidden = drawing >= 0; $("rDone").hidden = $("rUndo").hidden = drawing < 0; $("rType").disabled = drawing >= 0;
   $("routeHint").classList.toggle("err", drawing >= 0);
-  $("routeHint").textContent = drawing >= 0 ? "กำลังวาดเส้นทาง: แตะบนภาพไล่ตามแนวถนนทีละจุด แล้วกด ✔ เสร็จ (ระหว่างนี้แตะภาพจะไม่เพิ่มหมุด)" : "เลือกประเภท แล้วกด \"+ วาดเส้นทาง\" จากนั้นแตะบนภาพไล่ตามแนวถนนทีละจุด (อย่างน้อย 2 จุด) แล้วกด \"✔ เสร็จ\" รถหรือคนจะวิ่งไปกลับตามเส้นนั้น";
+  const fxNow = drawing >= 0 && ROUTE_TYPES[rs[drawing].type].fixed;
+  $("routeHint").textContent = fxNow ? "กำลังวางต้นไม้: แตะบนภาพตรงที่ต้องการวาง 1 ครั้งต่อ 1 ต้น (กี่ต้นก็ได้) แล้วกด ✔ เสร็จ" : drawing >= 0 ? "กำลังวาดเส้นทาง: แตะบนภาพไล่ตามแนวถนนทีละจุด แล้วกด ✔ เสร็จ (ระหว่างนี้แตะภาพจะไม่เพิ่มหมุด)" : "เลือกประเภท แล้วกด \"+ วาดเส้นทาง\" จากนั้นแตะบนภาพไล่ตามแนวถนนทีละจุด (อย่างน้อย 2 จุด) แล้วกด \"✔ เสร็จ\" รถหรือคนจะวิ่งไปกลับตามเส้นนั้น · ต้นไม้และต้นมะพร้าว: แตะ 1 ครั้งต่อ 1 ต้น";
+  life.set(draft.anim); // แสดงผลทันที (เส้นทางที่ยังวาดไม่ครบจะยังไม่วิ่ง)
   stage.classList.toggle("drawing", drawing >= 0);
-  if (drawing < 0) life.set(draft.anim);
 }
 $("rAdd").onclick = () => { draft.anim.routes.push({ type: $("rType").value, n: 2, sp: 1, sz: 1, pts: [] }); drawing = draft.anim.routes.length - 1; renderRoutes(); stage.scrollIntoView({ block: "nearest", behavior: "smooth" }); };
 $("rUndo").onclick = () => { if (drawing >= 0) { draft.anim.routes[drawing].pts.pop(); renderRoutes(); } };
 $("rDone").onclick = () => {
   const r = draft.anim.routes[drawing];
-  if (r && r.pts.length < 2) { draft.anim.routes.splice(drawing, 1); toast("เส้นทางต้องมีอย่างน้อย 2 จุด จึงยังไม่ได้เพิ่ม"); }
+  const need = r && ROUTE_TYPES[r.type].fixed ? 1 : 2;
+  if (r && r.pts.length < need) { draft.anim.routes.splice(drawing, 1); toast(need === 1 ? "ยังไม่ได้วางต้นไม้ จึงยังไม่ได้เพิ่ม" : "เส้นทางต้องมีอย่างน้อย 2 จุด จึงยังไม่ได้เพิ่ม"); }
   else setDirty(true);
   drawing = -1; renderRoutes();
 };
