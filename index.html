@@ -46,10 +46,14 @@
     <div id="introBody"></div>
   </details>
   <div class="msg" id="noImg" hidden>ตำบลนี้ยังไม่มีภาพแผนที่ ครูกำลังจัดทำ</div>
-  <div class="stage" id="stage">
-    <img class="map" id="mapImg" alt="" draggable="false">
+  <div id="mapWrap">
+    <button type="button" class="fsclose" id="fsClose" aria-label="ปิดโหมดเต็มจอ">✕ ปิดเต็มจอ</button>
+    <div class="stage" id="stage">
+      <img class="map" id="mapImg" alt="" draggable="false">
+    </div>
+    <div id="cardSlot"></div>
   </div>
-  <div id="cardSlot"></div>
+  <div class="bar"><button type="button" id="fsBtn">⛶ ขยายแผนที่เต็มจอ</button></div>
   <div class="list" id="list" aria-label="รายชื่อสถานที่"></div>
   </section>
 
@@ -148,6 +152,15 @@ function onMaps(list, err) {
 }
 
 /* เหตุการณ์ */
+/* ขยายแผนที่เต็มจอ: รถ คน และรายละเอียดในภาพจะใหญ่และชัดขึ้น */
+function setFs(on) {
+  $("mapWrap").classList.toggle("fs", on); document.body.classList.toggle("fs-open", on);
+  $("fsBtn").setAttribute("aria-pressed", on);
+  if (on) $("fsClose").focus();
+}
+$("fsBtn").onclick = () => setFs(true);
+$("fsClose").onclick = () => setFs(false);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("mapWrap").classList.contains("fs")) setFs(false); });
 /* ภาพเคลื่อนไหวบนแผนที่ (เปิด/ปิดได้ เครื่องจะจำไว้) */
 const life = new MapLife(stage, $("mapImg"));
 function setLifeBtn() { $("lifeBtn").textContent = "✨ ภาพเคลื่อนไหว: " + (life.on ? "เปิด" : "ปิด"); $("lifeBtn").classList.toggle("on", life.on); $("lifeBtn").setAttribute("aria-pressed", life.on); }

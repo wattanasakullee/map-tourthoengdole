@@ -63,7 +63,17 @@ label small{font-weight:400;color:var(--muted)}
 /* หน้าผู้ชม: ภาพแผนที่สูงไม่เกินจอ เพื่อให้เห็นภาพและข้อมูลใต้ภาพพร้อมกัน */
 .viewer .stage{width:fit-content;max-width:100%;margin-inline:auto;scroll-margin-top:12px}
 .viewer #noImg{scroll-margin-top:12px}
-.viewer .stage img.map{width:auto;max-width:100%;max-height:68vh}
+.viewer .stage img.map{width:auto;max-width:100%;max-height:82vh}
+/* โหมดเต็มจอ */
+.fsclose{display:none}
+#mapWrap{display:flex;flex-direction:column;gap:16px}
+#mapWrap.fs{position:fixed;inset:0;z-index:100;background:#0d1417;overflow:auto;padding:max(8px,env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));gap:8px}
+#mapWrap.fs .stage{margin:auto}
+#mapWrap.fs .stage img.map{max-height:calc(100dvh - 16px);max-width:calc(100vw - 16px);border-radius:10px}
+#mapWrap.fs .fsclose{display:inline-flex;position:fixed;top:max(10px,env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));z-index:110;background:rgba(255,255,255,.92);color:#1e2f2a;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+#mapWrap.fs #cardSlot{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(640px,calc(100vw - 20px));max-height:45dvh;overflow:auto;z-index:105;border-radius:14px}
+#mapWrap.fs #cardSlot:empty{display:none}
+body.fs-open{overflow:hidden}
 .viewer #cardSlot:empty{display:none}
 
 /* วิดีโอ */

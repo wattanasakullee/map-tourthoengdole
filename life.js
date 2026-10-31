@@ -66,7 +66,7 @@ class MapLife {
   setOn(v) { this.on = v; if (!v) this.clear(); this.kick(); }
   clear() { this.ctx.clearRect(0, 0, this.cv.width, this.cv.height); }
   fit() {
-    const w = this.img.clientWidth, h = this.img.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+    const w = this.img.clientWidth, h = this.img.clientHeight, d = Math.min(3, devicePixelRatio || 1);
     this.W = w; this.H = h;
     this.cv.style.width = w + "px"; this.cv.style.height = h + "px";
     this.cv.width = Math.round(w * d); this.cv.height = Math.round(h * d);
@@ -189,7 +189,7 @@ class MapLife {
     this.treeCache = this.treeCache || new Map();
     if (this.treeCache.has(key)) return this.treeCache.get(key);
     let x = st.seed >>> 0; const R = () => { x = (x + 0x6D2B79F5) >>> 0; let t = Math.imul(x ^ (x >>> 15), 1 | x); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-    const d = Math.min(2, devicePixelRatio || 1), W = S * 1.3, ox = W / 2;
+    const d = Math.min(3, devicePixelRatio || 1), W = S * 1.3, ox = W / 2;
     const baseY = S * .3, trunkH = S * .34, crownH = S * .92;
     const mk = (w, h) => { const cv = document.createElement("canvas"); cv.width = Math.ceil(w * d); cv.height = Math.ceil(h * d); const c = cv.getContext("2d"); c.scale(d, d); return [cv, c]; };
     // ลำต้น
@@ -396,14 +396,14 @@ class MapLife {
       order.sort((a, b) => a.py - b.py); // วาดจากไกลไปใกล้
       for (const o of order) {
         if (o.st) { // ต้นไม้
-          const size = Math.max(10, W * o.ty.size * .8 * (o.st.r.sz || 1) * (.72 + o.py * .55));
+          const tsz = o.st.r.sz || 1, size = Math.max((o.st.r.type === "palm" ? 38 : 30) * tsz, W * o.ty.size * .8 * tsz * (.72 + o.py * .55));
           ctx.save(); ctx.translate(o.px * W, o.py * H);
           ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(size * .06, 0, size * .28, size * .06, 0, 0, 6.283); ctx.fill();
           this.plant(o.st.r.type, size, o.st, t, o.spd);
           ctx.restore(); continue;
         }
         const { m, ty, spd, px, py, vx, vy } = o, walker = ["walk", "hike", "monk", "tribe"].includes(m.r.type);
-        const persp = .72 + py * .55, size = Math.max(6, W * ty.size * .7 * (m.r.sz || 1) * persp);
+        const persp = .72 + py * .55, sz = m.r.sz || 1, minPx = (walker ? 13 : m.r.type === "van" ? 17 : 15) * sz * persp, size = Math.max(minPx, W * ty.size * .7 * sz * persp);
         const right = vx >= 0, ang = walker ? 0 : Math.max(-.42, Math.min(.42, Math.atan2(vy, Math.abs(vx) || .001)));
         const bob = walker ? Math.abs(Math.sin(t * 6.5 + m.ph)) * size * .03 : 0;
         ctx.save(); ctx.translate(px * W, py * H);
@@ -412,7 +412,9 @@ class MapLife {
         ctx.translate(0, -bob);
         if (!right) ctx.scale(-1, 1);
         ctx.rotate(right ? ang : ang);
+        ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = Math.max(1, size * .06); // ขอบเงาบาง ๆ ให้ตัดกับพื้นหลัง
         this.sprite(m.r.type, size, m, t, spd);
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
         ctx.restore();
       }
       // ผีเสื้อ
